@@ -1,0 +1,9 @@
+# this machine's settings
+/local.conf
+
+# makepkg output
+/build/
+*/src/
+*/pkg/
+*.pkg.tar.*
+*.log

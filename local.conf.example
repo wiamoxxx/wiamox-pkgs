@@ -1,0 +1,21 @@
+# Copy to local.conf and adjust. local.conf is only for this machine and
+# is not committed. Any WIAMOX_* variable set in the environment wins.
+
+# Kernel source tree to build from (the folder with the top-level Makefile).
+# Your edits in this tree are what gets packaged.
+WIAMOX_KERNEL_SRC=/home/lol/wiamox-kernel/linux-7.2.8
+
+# fragments = x86_64_defconfig + linux/wiamox-base.config + linux/wiamox-drivers.config
+# full      = linux/config exactly as it is
+WIAMOX_KERNEL_CONFIG=fragments
+
+# Local pacman repo the finished packages are added to, and its name as
+# written in pacman.conf ([custom] -> custom).
+WIAMOX_KITCHEN=/home/lol/woxKitchen
+WIAMOX_KITCHEN_DB=custom
+
+# Where makepkg compiles (the kernel needs about 30 GB). Default: build/ in this repo.
+#WIAMOX_BUILDDIR=/mnt/big-disk/wiamox-build
+
+# Parallel compile jobs. Default: all CPU threads.
+#MAKEFLAGS="-j16"
