@@ -13,11 +13,8 @@
 # environment win over it.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-msg() { echo "==> $*"; }
-warn() { echo "==> WARNING: $*" >&2; }
-die() { echo "==> ERROR: $*" >&2; exit 1; }
+# shellcheck source=common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 usage() {
   sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
@@ -52,17 +49,7 @@ fi
 command -v makepkg >/dev/null || die "makepkg not found (this needs an Arch-based system)."
 
 # --- settings ----------------------------------------------------------------
-env_vars=$(compgen -v WIAMOX_ || true)
-saved=""
-# shellcheck disable=SC2086  # $env_vars is a list of names
-[[ -z $env_vars ]] || saved=$(declare -p $env_vars | sed 's/^declare /declare -g /')
-if [[ -r $ROOT/local.conf ]]; then
-  # shellcheck disable=SC1091
-  source "$ROOT/local.conf"
-fi
-eval "$saved"
-
-WIAMOX_KITCHEN_DB=${WIAMOX_KITCHEN_DB:-custom}
+load_conf
 export WIAMOX_KERNEL_SRC=${WIAMOX_KERNEL_SRC-} WIAMOX_KERNEL_CONFIG=${WIAMOX_KERNEL_CONFIG:-fragments}
 export BUILDDIR=${WIAMOX_BUILDDIR:-$ROOT/build}
 # Kept out of the package folders, so the calamares-wiamox submodule stays clean.
@@ -152,13 +139,7 @@ printf '    %s\n' "${built[@]}"
 
 # --- add to woxKitchen -------------------------------------------------------
 if (( kitchen )); then
-  db=""
-  for ext in zst xz gz bz2; do
-    if [[ -e $WIAMOX_KITCHEN/$WIAMOX_KITCHEN_DB.db.tar.$ext ]]; then
-      db="$WIAMOX_KITCHEN/$WIAMOX_KITCHEN_DB.db.tar.$ext"
-      break
-    fi
-  done
+  db=$(kitchen_db)
   [[ -n $db ]] || db="$WIAMOX_KITCHEN/$WIAMOX_KITCHEN_DB.db.tar.zst"
 
   msg "Adding to woxKitchen ($db) ..."

@@ -19,3 +19,10 @@ WIAMOX_KITCHEN_DB=custom
 
 # Parallel compile jobs. Default: all CPU threads.
 #MAKEFLAGS="-j16"
+
+# scripts/publish.sh: where woxKitchen is published. The repository must be
+# public, pacman cannot log in to GitHub.
+#WIAMOX_PUBLISH_REPO=wiamoxxx/wiamox-pkgs
+#WIAMOX_PUBLISH_TAG=x86_64
+# Repo name in pacman.conf ([woxkitchen]).
+#WIAMOX_PUBLISH_DB=woxkitchen

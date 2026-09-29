@@ -1,7 +1,8 @@
 # wiamox-pkgs
 
 The WiamOX packages that don't come from Arch, as build recipes (PKGBUILDs),
-and the script that builds them into your local woxKitchen repo.
+the script that builds them into your local woxKitchen repo, and the
+script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 
 | Folder | Package | Source |
 |---|---|---|
@@ -98,6 +99,51 @@ To try a change before pushing it, edit the files directly in
 `calamares-wiamox/` here and build; `build.sh` warns that it is building
 uncommitted changes. Commit and push them from inside that folder
 afterwards (it is a normal clone of the calamares-wiamox repo).
+
+## Publishing woxKitchen online
+
+```sh
+scripts/publish.sh --dry-run   # show what would change
+scripts/publish.sh             # upload
+```
+
+The release `x86_64` of this GitHub repository becomes a pacman repo:
+it holds the package files plus `woxkitchen.db` / `woxkitchen.files`.
+Any machine can then use it:
+
+```ini
+# above [core], see "Why the kernel package is called linux"
+[woxkitchen]
+SigLevel = Optional TrustAll
+Server = https://github.com/wiamoxxx/wiamox-pkgs/releases/download/x86_64
+```
+
+What `publish.sh` does:
+
+1. Takes the packages woxKitchen's database lists (the current version
+   of each; old files lying in the folder are ignored).
+2. Builds a fresh database for them under the name `woxkitchen`.
+3. Uploads only packages that are new or changed (it keeps checksums in
+   `woxkitchen.sha256`), then the database, then removes old versions
+   from the release. Packages go up before the database, so the online
+   database never lists a file that is not there yet.
+4. Downloads the database again and checks that every package in it can
+   be downloaded.
+
+Once per machine: `pacman -S github-cli` and `gh auth login`.
+
+**The repository must be public.** pacman cannot log in to GitHub, so
+release files of a private repository cannot be downloaded; `publish.sh`
+stops with a message in that case. Either make this repository public or
+publish to a separate public one (`WIAMOX_PUBLISH_REPO` in `local.conf`).
+
+The normal flow:
+
+```sh
+scripts/build.sh linux            # -> woxKitchen
+# build the ISO with woxKitchen (local mode), test it
+scripts/publish.sh                # -> online, for everyone else
+```
 
 ## Why the kernel package is called `linux`
 
