@@ -1,0 +1,4 @@
+[submodule "calamares-wiamox"]
+	path = calamares-wiamox
+	url = https://github.com/wiamoxxx/calamares-wiamox.git
+	branch = main

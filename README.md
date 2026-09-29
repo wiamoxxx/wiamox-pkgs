@@ -6,8 +6,9 @@ and the script that builds them into your local woxKitchen repo.
 | Folder | Package | Source |
 |---|---|---|
 | `linux/` | `linux`, `linux-headers`: the WiamOX kernel | a kernel source tree **on your disk** (with your own edits) |
+| `calamares-wiamox/` | `calamares-wiamox`: installer branding and config | git submodule → [wiamoxxx/calamares-wiamox](https://github.com/wiamoxxx/calamares-wiamox) |
 
-`calamares-wiamox` will join as a submodule next.
+Finished packages go to `out/`, build logs to `build/logs/`.
 
 ## Setup (once per machine)
 
@@ -69,7 +70,36 @@ that, so the repo shows which version was built.
 - **Using a complete config instead:** put it in `linux/config` and set
   `WIAMOX_KERNEL_CONFIG=full` in `local.conf`.
 
-### Why the package is called `linux`
+## Building calamares-wiamox
+
+```sh
+scripts/build.sh calamares-wiamox   # build, then add to woxKitchen
+```
+
+The folder is a git submodule: wiamox-pkgs records which commit of
+calamares-wiamox it builds. After `git clone`, `build.sh` fetches it on
+first use (or run `git clone --recurse-submodules`).
+
+It is a config-only package, so it builds in seconds and nothing is
+installed on the build machine for it (no `calamares`, `grub`, ...).
+
+**Building a newer calamares-wiamox:**
+
+1. Change calamares-wiamox in its own repo as usual and bump `pkgver`
+   in its `PKGBUILD` (pacman only updates on a higher version).
+2. Here, move the submodule to the latest `main` and record that:
+   ```sh
+   git submodule update --remote calamares-wiamox
+   git commit -am "Bump calamares-wiamox to <version>"
+   ```
+3. `scripts/build.sh calamares-wiamox`
+
+To try a change before pushing it, edit the files directly in
+`calamares-wiamox/` here and build; `build.sh` warns that it is building
+uncommitted changes. Commit and push them from inside that folder
+afterwards (it is a normal clone of the calamares-wiamox repo).
+
+## Why the kernel package is called `linux`
 
 It replaces Arch's kernel, so nothing else (package lists, boot entries,
 `mkinitcpio` presets, the installer) needs to change. The rule that comes

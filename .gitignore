@@ -3,6 +3,7 @@
 
 # makepkg output
 /build/
+/out/
 */src/
 */pkg/
 *.pkg.tar.*
