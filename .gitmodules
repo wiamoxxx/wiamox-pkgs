@@ -2,3 +2,7 @@
 	path = calamares-wiamox
 	url = https://github.com/wiamoxxx/calamares-wiamox.git
 	branch = main
+[submodule "woxed"]
+	path = woxed
+	url = https://github.com/wiamoxxx/woxed.git
+	branch = main

@@ -8,8 +8,25 @@ script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 |---|---|---|
 | `linux/` | `linux`, `linux-headers`: the WiamOX kernel | a kernel source tree **on your disk** (with your own edits) |
 | `calamares-wiamox/` | `calamares-wiamox`: installer branding and config | git submodule → [wiamoxxx/calamares-wiamox](https://github.com/wiamoxxx/calamares-wiamox) |
+| `woxed/` | `woxed`: the WiamOX Editor | git submodule → [wiamoxxx/woxed](https://github.com/wiamoxxx/woxed) |
+| `aur/calamares/` | `calamares`: the installer program | the AUR, cloned on first build (not part of this repo) |
 
-Finished packages go to `out/`, build logs to `build/logs/`.
+Finished packages go to `out/`, build logs to `build/logs/`, downloaded
+sources to `build/sources/`.
+
+Every build with `scripts/build.sh`:
+
+- **runs without your home folder:** `~/...` entries are removed from
+  `PATH`, and virtualenv/conda/`PYTHONPATH`/`LD_LIBRARY_PATH` settings
+  are cleared. This way a Python from `uv` or pyenv can't end up linked
+  into a package.
+- **checks the libraries before `repo-add`:** every program and library
+  in the new package must find the shared libraries it needs on this
+  machine, and none may come from `/home`. If one doesn't, nothing goes
+  into woxKitchen (`--no-libcheck` skips this check).
+- **installs what the package needs to build and run** (`makepkg --syncdeps`).
+  It stays installed, because the library check needs it. `pacman -Qdt`
+  lists what is no longer needed by anything, to remove it later.
 
 ## Setup (once per machine)
 
@@ -100,33 +117,66 @@ To try a change before pushing it, edit the files directly in
 uncommitted changes. Commit and push them from inside that folder
 afterwards (it is a normal clone of the calamares-wiamox repo).
 
-## The `calamares` program (AUR, built by hand)
+## Building woxed
+
+```sh
+scripts/build.sh woxed
+```
+
+Builds the pinned version recorded in the `woxed/` submodule. Needs
+internet (Neovim, about 33 plugin repos, treesitter parsers) and runs
+Woxed's offline self-check. The downloads are kept in `build/sources/`,
+so later builds are faster. Too little memory while the parsers compile:
+`WOXED_JOBS=2 scripts/build.sh woxed`.
+
+**Building a newer woxed:** bump `WOXED_VERSION` in woxed's `versions.env`
+(pacman only updates on a higher version) and push it. Then, here:
+
+```sh
+git submodule update --remote woxed
+git commit -am "Bump woxed to <version>"
+scripts/build.sh woxed
+```
+
+To put it on the ISO, `woxed` must be listed in woxclean1's
+`packages.x86_64` (it is).
+
+## Building calamares (the installer program)
 
 `calamares-wiamox` depends on `calamares`, the installer program itself.
-It is not in Arch's repos and has no recipe here: build it from the AUR
-and add it to woxKitchen yourself. Full steps are in the calamares-wiamox
-README, section "The `calamares` program itself". In short:
+It is not in Arch's repos, so it is built from the AUR:
 
-- **Rebuild it after every Python version change in Arch** (and after new
-  boost, yaml-cpp or kpmcore versions). It links against `libpython3.X`,
-  and an old build fails on the ISO with
-  `libpython3.12.so.1.0: cannot open shared object file`.
-- **Don't let your home folder into the build.** A second Python in
-  `~/.local/bin` (e.g. from `uv python install`) is found first by CMake,
-  and the package then needs a `libpython` that exists only in your home
-  folder. Build in a clean chroot (`extra-x86_64-build`, or
-  `extra-testing-x86_64-build` while the ISO uses the testing repos) or
-  with `env PATH=/usr/local/sbin:/usr/local/bin:/usr/bin makepkg -Csrf`.
-  The build log must show `Found Python3: /usr/bin/python3...`.
-- Start from a clean folder (`rm -rf src pkg *.pkg.tar.zst`). makepkg
-  otherwise reuses the old `src/` build or refuses to overwrite an
-  existing package.
-- Check before `repo-add`: `ldd /usr/bin/calamares | grep -E 'python|not found'`
-  shows the libpython from `/usr/lib` and no "not found".
+```sh
+scripts/build.sh calamares
+```
 
-The same home-folder trap can hit any package built with plain
-`makepkg` on the build machine. Packages that go on the ISO are safest
-when built in a clean chroot.
+- The first run clones the AUR recipe into `aur/calamares/` and asks you
+  to read its `PKGBUILD` before building. AUR recipes are written by other
+  people.
+- Every later run fetches the AUR recipe, shows what changed since the
+  last build, and asks again before building.
+- **Rebuild it after every Python update in Arch** (e.g. 3.14 → 3.15),
+  and after new boost, yaml-cpp or kpmcore versions. It links against
+  `libpython3.X`; an old build fails on the ISO with
+  `libpython3.12.so.1.0: cannot open shared object file`. The version
+  number stays the same for such a rebuild, so use `--force`:
+
+  ```sh
+  scripts/build.sh calamares --force
+  ```
+
+  pacman won't give that rebuild to already installed systems (same
+  version). That only matters once woxKitchen is published.
+- Match the ISO: build on a machine with the same package versions as
+  the ISO. `pacman.conf` in woxclean1 has the `*-testing` repos on, so
+  run `pacman -Syu` here first and compare `python --version` on both.
+
+The home-folder trap that broke calamares (a `~/.local/bin/python3.12`
+from `uv` was found first by CMake) is what the clean environment and
+the library check above prevent. If you ever build a package with plain
+`makepkg` outside this script, check the build log for
+`Found Python3: /usr/bin/python3...` and run
+`ldd /usr/bin/<program> | grep 'not found'` after installing it.
 
 ## Publishing woxKitchen online
 
@@ -169,6 +219,9 @@ The normal flow:
 
 ```sh
 scripts/build.sh linux            # -> woxKitchen
+scripts/build.sh calamares        # (when the AUR recipe or Python changed)
+scripts/build.sh calamares-wiamox
+scripts/build.sh woxed
 # build the ISO with woxKitchen (local mode), test it
 scripts/publish.sh                # -> online, for everyone else
 ```
