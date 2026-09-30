@@ -8,3 +8,6 @@
 */pkg/
 *.pkg.tar.*
 *.log
+
+# AUR recipes cloned by scripts/build.sh
+/aur/

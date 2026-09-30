@@ -7,6 +7,9 @@
 #   scripts/build.sh linux --no-kitchen   only build, leave woxKitchen alone
 #   scripts/build.sh linux --force        rebuild a version woxKitchen already has
 #   scripts/build.sh calamares-wiamox     the installer config (git submodule)
+#   scripts/build.sh woxed                the WiamOX Editor (git submodule)
+#   scripts/build.sh calamares            the installer program, from the AUR
+#   scripts/build.sh <pkg> --no-libcheck  skip the shared-library check
 #
 # Packages go to out/, logs to build/logs/. Settings come from local.conf
 # in the repo root (copy local.conf.example); WIAMOX_* variables set in the
@@ -17,7 +20,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 usage() {
-  sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -26,35 +29,53 @@ pkg=""
 install=0
 kitchen=1
 force=0
+libcheck=1
 for arg in "$@"; do
   case $arg in
     --install) install=1 ;;
     --no-kitchen) kitchen=0 ;;
     --force) force=1 ;;
+    --no-libcheck) libcheck=0 ;;
     -h|--help) usage ;;
     -*) echo "Unknown option: $arg" >&2; usage 1 ;;
     *) [[ -z $pkg ]] || usage 1; pkg=${arg%/} ;;
   esac
 done
 [[ -n $pkg ]] || usage 1
-pkgdir="$ROOT/$pkg"
-# Submodules (calamares-wiamox) are empty after a plain git clone.
-if [[ ! -f $pkgdir/PKGBUILD ]] &&
-   git -C "$ROOT" config -f .gitmodules --get "submodule.$pkg.path" >/dev/null 2>&1; then
-  msg "Fetching the $pkg submodule ..."
-  git -C "$ROOT" submodule update --init -- "$pkg"
-fi
-[[ -f $pkgdir/PKGBUILD ]] || die "No PKGBUILD in $pkgdir"
 [[ $EUID -ne 0 ]] || die "Run this as your normal user; makepkg refuses to run as root."
 command -v makepkg >/dev/null || die "makepkg not found (this needs an Arch-based system)."
 
+# Packages built straight from the AUR. Their recipes are not part of this
+# repo: they are cloned into aur/<name> and updated on every build.
+aur_packages=(calamares)
+is_aur=0
+for name in "${aur_packages[@]}"; do
+  [[ $pkg != "$name" ]] || is_aur=1
+done
+
+if (( is_aur )); then
+  pkgdir="$ROOT/aur/$pkg"
+  aur_update "$pkgdir" "$pkg"
+else
+  pkgdir="$ROOT/$pkg"
+  # Submodules (calamares-wiamox, woxed) are empty after a plain git clone.
+  if [[ ! -f $pkgdir/PKGBUILD ]] &&
+     git -C "$ROOT" config -f .gitmodules --get "submodule.$pkg.path" >/dev/null 2>&1; then
+    msg "Fetching the $pkg submodule ..."
+    git -C "$ROOT" submodule update --init -- "$pkg"
+  fi
+fi
+[[ -f $pkgdir/PKGBUILD ]] || die "No PKGBUILD in $pkgdir"
+
 # --- settings ----------------------------------------------------------------
 load_conf
+clean_build_env
 export WIAMOX_KERNEL_SRC=${WIAMOX_KERNEL_SRC-} WIAMOX_KERNEL_CONFIG=${WIAMOX_KERNEL_CONFIG:-fragments}
 export BUILDDIR=${WIAMOX_BUILDDIR:-$ROOT/build}
-# Kept out of the package folders, so the calamares-wiamox submodule stays clean.
-export PKGDEST=$ROOT/out LOGDEST=$BUILDDIR/logs
-mkdir -p "$PKGDEST" "$LOGDEST"
+# Kept out of the package folders, so the submodules stay clean. SRCDEST
+# holds downloaded sources (woxed: Neovim, ~33 plugin repos) between builds.
+export PKGDEST=$ROOT/out LOGDEST=$BUILDDIR/logs SRCDEST=${SRCDEST:-$BUILDDIR/sources}
+mkdir -p "$PKGDEST" "$LOGDEST" "$SRCDEST"
 if [[ -z ${MAKEFLAGS-} ]]; then
   MAKEFLAGS="-j$(nproc)"
   export MAKEFLAGS
@@ -105,6 +126,10 @@ else
     [[ $name == *-debug-* ]] && continue
     msg "Will build: $name"
     if (( kitchen && !force )) && compgen -G "$WIAMOX_KITCHEN/$name.pkg.tar.*" >/dev/null; then
+      if (( is_aur )); then
+        die "woxKitchen already has $name. To rebuild the same AUR version (e.g. after a
+    Python update in Arch), use --force to replace it."
+      fi
       die "woxKitchen already has $name. Bump pkgver or pkgrel in $pkg/PKGBUILD
     (otherwise pacman will not update installed systems), or use --force to replace it."
     fi
@@ -116,7 +141,8 @@ else
 fi
 
 # --- build -------------------------------------------------------------------
-# --syncdeps also installs the runtime depends on this machine. A package
+# --syncdeps also installs the runtime depends on this machine; they stay
+# installed, because the library check below needs them. A package
 # without makedepends (calamares-wiamox: only config files) needs nothing
 # to build, so its depends (calamares, grub, ...) are not installed here.
 if (cd "$pkgdir" && makepkg --printsrcinfo) | grep -q '^[[:space:]]*makedepends = '; then
@@ -136,6 +162,15 @@ done
 (( ${#built[@]} )) || die "makepkg finished, but no package files were found."
 msg "Built:"
 printf '    %s\n' "${built[@]}"
+
+# --- shared-library check ----------------------------------------------------
+if (( libcheck )); then
+  msg "Checking that every program and library in the package finds its libraries ..."
+  check_libs "${built[@]}" ||
+    die "The package needs libraries that are missing on this machine (see above).
+    Nothing was added to woxKitchen. A path under /home means something from
+    your home folder got into the build. --no-libcheck skips this check."
+fi
 
 # --- add to woxKitchen -------------------------------------------------------
 if (( kitchen )); then
