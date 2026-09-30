@@ -22,15 +22,33 @@ load_conf() {
 }
 
 # The woxKitchen database file (custom.db.tar.zst, ...); prints nothing if
-# there is none yet.
+# there is none yet. It is the file custom.db points to, because that is
+# the one pacman reads. Stops when there is more than one database:
+# repo-add points custom.db at whichever it wrote last, and pacman then
+# silently ignores every package that is only in the other one. (That is
+# how the ISO once got Arch's kernel instead of the one in woxKitchen.)
 kitchen_db() {
-  local ext
+  local base=$WIAMOX_KITCHEN/$WIAMOX_KITCHEN_DB ext dbs=() target
   for ext in zst xz gz bz2; do
-    if [[ -e $WIAMOX_KITCHEN/$WIAMOX_KITCHEN_DB.db.tar.$ext ]]; then
-      echo "$WIAMOX_KITCHEN/$WIAMOX_KITCHEN_DB.db.tar.$ext"
-      return
-    fi
+    [[ ! -e $base.db.tar.$ext ]] || dbs+=("$base.db.tar.$ext")
   done
+  if (( ${#dbs[@]} > 1 )); then
+    die "woxKitchen has more than one database:
+$(printf '        %s\n' "${dbs[@]}")
+    pacman only reads $base.db (-> $(readlink "$base.db" 2>/dev/null || echo '?')) and ignores
+    every package that is only in the other one. Build one database from the
+    package files (delete old versions of a package first):
+        cd $WIAMOX_KITCHEN
+        rm -f $WIAMOX_KITCHEN_DB.db* $WIAMOX_KITCHEN_DB.files*
+        repo-add $WIAMOX_KITCHEN_DB.db.tar.zst *.pkg.tar.zst"
+  fi
+  if [[ -L $base.db ]]; then
+    target=$(readlink -f "$base.db")
+    [[ -e $target ]] || die "$base.db points to $target, which does not exist."
+    echo "$target"
+  elif (( ${#dbs[@]} )); then
+    echo "${dbs[0]}"
+  fi
 }
 
 # Keeps everything from your home folder out of the build. A Python in

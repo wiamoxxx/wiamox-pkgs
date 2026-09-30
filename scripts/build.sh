@@ -85,6 +85,8 @@ if (( kitchen )); then
   [[ -n ${WIAMOX_KITCHEN-} ]] || die "WIAMOX_KITCHEN is not set (local.conf). Use --no-kitchen to only build."
   [[ -d $WIAMOX_KITCHEN && -w $WIAMOX_KITCHEN ]] || die "woxKitchen folder '$WIAMOX_KITCHEN' does not exist or is not writable."
   command -v repo-add >/dev/null || die "repo-add not found (pacman package)."
+  # Stops now, not after an hour of compiling, if woxKitchen has two databases.
+  kitchen_db >/dev/null
 fi
 
 # --- kernel checks, before spending an hour compiling ------------------------

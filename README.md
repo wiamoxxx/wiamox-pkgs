@@ -24,6 +24,12 @@ Every build with `scripts/build.sh`:
   in the new package must find the shared libraries it needs on this
   machine, and none may come from `/home`. If one doesn't, nothing goes
   into woxKitchen (`--no-libcheck` skips this check).
+- **stops if woxKitchen has two databases** (e.g. `custom.db.tar.zst` and
+  `custom.db.tar.gz`). pacman only reads the one `custom.db` points to and
+  silently ignores packages that are only in the other. That once gave
+  the ISO Arch's kernel instead of the one in woxKitchen. The error
+  message shows how to build one database again. Add packages by hand
+  only with `repo-add -R <woxKitchen>/custom.db.tar.zst <file>`.
 - **installs what the package needs to build and run** (`makepkg --syncdeps`).
   It stays installed, because the library check needs it. `pacman -Qdt`
   lists what is no longer needed by anything, to remove it later.
