@@ -100,6 +100,34 @@ To try a change before pushing it, edit the files directly in
 uncommitted changes. Commit and push them from inside that folder
 afterwards (it is a normal clone of the calamares-wiamox repo).
 
+## The `calamares` program (AUR, built by hand)
+
+`calamares-wiamox` depends on `calamares`, the installer program itself.
+It is not in Arch's repos and has no recipe here: build it from the AUR
+and add it to woxKitchen yourself. Full steps are in the calamares-wiamox
+README, section "The `calamares` program itself". In short:
+
+- **Rebuild it after every Python version change in Arch** (and after new
+  boost, yaml-cpp or kpmcore versions). It links against `libpython3.X`,
+  and an old build fails on the ISO with
+  `libpython3.12.so.1.0: cannot open shared object file`.
+- **Don't let your home folder into the build.** A second Python in
+  `~/.local/bin` (e.g. from `uv python install`) is found first by CMake,
+  and the package then needs a `libpython` that exists only in your home
+  folder. Build in a clean chroot (`extra-x86_64-build`, or
+  `extra-testing-x86_64-build` while the ISO uses the testing repos) or
+  with `env PATH=/usr/local/sbin:/usr/local/bin:/usr/bin makepkg -Csrf`.
+  The build log must show `Found Python3: /usr/bin/python3...`.
+- Start from a clean folder (`rm -rf src pkg *.pkg.tar.zst`). makepkg
+  otherwise reuses the old `src/` build or refuses to overwrite an
+  existing package.
+- Check before `repo-add`: `ldd /usr/bin/calamares | grep -E 'python|not found'`
+  shows the libpython from `/usr/lib` and no "not found".
+
+The same home-folder trap can hit any package built with plain
+`makepkg` on the build machine. Packages that go on the ISO are safest
+when built in a clean chroot.
+
 ## Publishing woxKitchen online
 
 ```sh
