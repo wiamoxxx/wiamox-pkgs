@@ -38,15 +38,22 @@ Every build with `scripts/build.sh`:
 ## Setup (once per machine)
 
 ```sh
+git clone --recurse-submodules https://github.com/wiamoxxx/wiamox-pkgs.git
+cd wiamox-pkgs
 cp local.conf.example local.conf
-$EDITOR local.conf        # WIAMOX_KERNEL_SRC, WIAMOX_KITCHEN, ...
+$EDITOR local.conf        # WIAMOX_KITCHEN, WIAMOX_KERNEL_SRC, WIAMOX_COREUTILS_SRC, ...
 ```
 
-Build machine: Arch-based, with `base-devel` installed. Everything else
-the kernel needs (`bc cpio gettext libelf pahole perl python tar xz zstd`)
-is installed by makepkg when missing. Space: about **30 GB** free where
-it compiles (`build/` here, or `WIAMOX_BUILDDIR`), because the config
-has full debug info (needed for BTF).
+- The WiamOX repositories are private: log in once with
+  `gh auth login` and `gh auth setup-git` (package `github-cli`),
+  otherwise cloning the submodules fails with "Password authentication
+  is not supported".
+- Build machine: Arch-based, with `base-devel` installed. What each
+  package needs to build is installed by makepkg when missing.
+- Space: about **30 GB** free where it compiles (`build/` here, or
+  `WIAMOX_BUILDDIR`) for the kernel, because its config has full debug
+  info (needed for BTF). The other packages need far less.
+- woxKitchen must exist and have at most one database (see above).
 
 ## Building the kernel
 
