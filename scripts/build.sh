@@ -9,7 +9,7 @@
 #   scripts/build.sh calamares-wiamox     the installer config (git submodule)
 #   scripts/build.sh woxed                the WiamOX Editor (git submodule)
 #   scripts/build.sh calamares            the installer program, from the AUR
-#   scripts/build.sh coreutils            Arch's coreutils + patches in coreutils/
+#   scripts/build.sh coreutils            coreutils from your source tree
 #   scripts/build.sh <pkg> --no-libcheck  skip the shared-library check
 #
 # Packages go to out/, logs to build/logs/. Settings come from local.conf
@@ -49,32 +49,14 @@ command -v makepkg >/dev/null || die "makepkg not found (this needs an Arch-base
 # Packages built straight from the AUR. Their recipes are not part of this
 # repo: they are cloned into aur/<name> and updated on every build.
 aur_packages=(calamares)
-# Arch packages with WiamOX changes: Arch's current recipe is cloned into
-# arch/<name> on every build, and <name>/patches/*.patch from this repo are
-# applied on top (see make_wiamox_recipe in common.sh).
-arch_packages=(coreutils)
-is_aur=0 is_arch=0
+is_aur=0
 for name in "${aur_packages[@]}"; do
   [[ $pkg != "$name" ]] || is_aur=1
-done
-for name in "${arch_packages[@]}"; do
-  [[ $pkg != "$name" ]] || is_arch=1
 done
 
 if (( is_aur )); then
   pkgdir="$ROOT/aur/$pkg"
   recipe_update "$pkgdir" "$pkg" "https://aur.archlinux.org/$pkg.git" "the AUR" ask
-elif (( is_arch )); then
-  recipe_update "$ROOT/arch/$pkg" "$pkg" \
-    "https://gitlab.archlinux.org/archlinux/packaging/packages/$pkg.git" "Arch"
-  pkgdir="$ROOT/arch/$pkg.wiamox"
-  make_wiamox_recipe "$ROOT/arch/$pkg" "$ROOT/$pkg" "$pkgdir"
-  # Arch keeps the signing keys of the source tarballs next to the recipe;
-  # makepkg needs them to verify the download.
-  if compgen -G "$ROOT/arch/$pkg/keys/pgp/*.asc" >/dev/null; then
-    gpg --quiet --import "$ROOT/arch/$pkg"/keys/pgp/*.asc 2>/dev/null ||
-      warn "Could not import the PGP keys in arch/$pkg/keys/pgp/."
-  fi
 else
   pkgdir="$ROOT/$pkg"
   # Submodules (calamares-wiamox, woxed) are empty after a plain git clone.
@@ -90,6 +72,7 @@ fi
 load_conf
 clean_build_env
 export WIAMOX_KERNEL_SRC=${WIAMOX_KERNEL_SRC-} WIAMOX_KERNEL_CONFIG=${WIAMOX_KERNEL_CONFIG:-fragments}
+export WIAMOX_COREUTILS_SRC=${WIAMOX_COREUTILS_SRC-}
 export BUILDDIR=${WIAMOX_BUILDDIR:-$ROOT/build}
 # Kept out of the package folders, so the submodules stay clean. SRCDEST
 # holds downloaded sources (woxed: Neovim, ~33 plugin repos) between builds.
@@ -136,6 +119,34 @@ if [[ $pkg == linux ]]; then
   free_gb=$(( $(df -Pk "$BUILDDIR" | awk 'NR==2 { print $4 }') / 1024 / 1024 ))
   (( free_gb >= 30 )) ||
     warn "Only ${free_gb} GB free in $BUILDDIR; a kernel build with debug info needs about 30 GB."
+
+# --- coreutils checks, same idea: the source is a folder on this machine ----
+elif [[ $pkg == coreutils ]]; then
+  [[ -f $WIAMOX_COREUTILS_SRC/configure.ac && -x $WIAMOX_COREUTILS_SRC/build-aux/git-version-gen ]] ||
+    die "WIAMOX_COREUTILS_SRC='$WIAMOX_COREUTILS_SRC' is not a coreutils source tree (set it in local.conf)."
+  # Same as pkgver() in coreutils/PKGBUILD.
+  src_ver=$(cd "$WIAMOX_COREUTILS_SRC" && build-aux/git-version-gen .tarball-version 2>/dev/null) || src_ver=""
+  src_ver=${src_ver%-dirty}
+  [[ $src_ver =~ ^[0-9] ]] ||
+    die "Cannot read the coreutils version from $WIAMOX_COREUTILS_SRC. A release tarball
+    has .tarball-version; a git clone needs its .git folder and tags (git fetch --tags)."
+  src_ver=${src_ver//-/.}
+  if [[ ! -x $WIAMOX_COREUTILS_SRC/configure && ! -f $WIAMOX_COREUTILS_SRC/gnulib/gnulib-tool ]]; then
+    die "$WIAMOX_COREUTILS_SRC is a git clone without gnulib. Run there:
+    git submodule update --init"
+  fi
+  pb_ver=$(sed -n 's/^pkgver=//p' "$pkgdir/PKGBUILD")
+  pb_rel=$(sed -n 's/^pkgrel=//p' "$pkgdir/PKGBUILD")
+  # makepkg resets pkgrel to 1 when pkgver() finds a new version.
+  [[ $src_ver == "$pb_ver" ]] && rel=$pb_rel || rel=1
+  msg "coreutils source: $WIAMOX_COREUTILS_SRC"
+  msg "Will build: coreutils $src_ver-$rel"
+
+  if (( kitchen && !force )) &&
+     compgen -G "$WIAMOX_KITCHEN/coreutils-$src_ver-$rel-x86_64.pkg.tar.*" >/dev/null; then
+    die "woxKitchen already has coreutils $src_ver-$rel. Bump pkgrel in coreutils/PKGBUILD
+    (otherwise pacman will not update installed systems), or use --force to replace it."
+  fi
 else
   # Other packages have a fixed version in their PKGBUILD.
   mapfile -t planned < <(cd "$pkgdir" && makepkg --packagelist)
@@ -150,11 +161,6 @@ else
       if (( is_aur )); then
         die "woxKitchen already has $name. To rebuild the same AUR version (e.g. after a
     Python update in Arch), use --force to replace it."
-      fi
-      if (( is_arch )); then
-        die "woxKitchen already has $name. After changing $pkg/patches/ without a new Arch
-    version, raise WIAMOX_PKGREL in $pkg/wiamox.conf (otherwise pacman will not
-    update installed systems), or use --force to replace it."
       fi
       die "woxKitchen already has $name. Bump pkgver or pkgrel in $pkg/PKGBUILD
     (otherwise pacman will not update installed systems), or use --force to replace it."
