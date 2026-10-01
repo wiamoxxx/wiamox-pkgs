@@ -10,7 +10,7 @@ script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 | `calamares-wiamox/` | `calamares-wiamox`: installer branding and config | git submodule → [wiamoxxx/calamares-wiamox](https://github.com/wiamoxxx/calamares-wiamox) |
 | `woxed/` | `woxed`: the WiamOX Editor | git submodule → [wiamoxxx/woxed](https://github.com/wiamoxxx/woxed) |
 | `aur/calamares/` | `calamares`: the installer program | the AUR, cloned on first build (not part of this repo) |
-| `coreutils/` | `coreutils` with WiamOX patches | Arch's current recipe, cloned into `arch/coreutils/` on every build, plus `coreutils/patches/` |
+| `coreutils/` | `coreutils`: the basic commands (`ls`, `cp`, ...) | a coreutils source tree **on your disk** (with your own edits) |
 
 Finished packages go to `out/`, build logs to `build/logs/`, downloaded
 sources to `build/sources/`.
@@ -185,44 +185,63 @@ the library check above prevent. If you ever build a package with plain
 `Found Python3: /usr/bin/python3...` and run
 `ldd /usr/bin/<program> | grep 'not found'` after installing it.
 
-## Building coreutils (Arch's, with WiamOX patches)
+## Building coreutils
+
+Works like the kernel: you keep a coreutils source tree on your disk, edit
+the code there, and build it.
 
 ```sh
-scripts/build.sh coreutils
+scripts/build.sh coreutils              # build, then add to woxKitchen
+scripts/build.sh coreutils --install    # ... and install it on this machine
 ```
 
-This repo only holds the WiamOX part:
+**The source tree** (`WIAMOX_COREUTILS_SRC` in `local.conf`), one of:
 
-- `coreutils/patches/*.patch`: your changes, applied in name order.
-  `coreutils/patches/README.md` shows how to make one.
-- `coreutils/wiamox.conf`: `WIAMOX_PKGREL`, the WiamOX release on top of
-  Arch's. Arch's `9.12-2` becomes `9.12-2.1`.
+- **A release tarball, unpacked.** Simplest: it has `./configure` and the
+  translations.
+  ```sh
+  mkdir -p ~/wiamox-coreutils && cd ~/wiamox-coreutils
+  curl -O https://ftp.gnu.org/gnu/coreutils/coreutils-9.12.tar.xz
+  curl -O https://ftp.gnu.org/gnu/coreutils/coreutils-9.12.tar.xz.sig
+  gpg --verify coreutils-9.12.tar.xz.sig     # key 6C37DC12121A5006BC1DB804DF6FD971306037D9
+  tar xf coreutils-9.12.tar.xz
+  ```
+- **A git clone**, if you want git to track your changes:
+  ```sh
+  git clone --recurse-submodules https://git.savannah.gnu.org/git/coreutils.git
+  cd coreutils && git checkout v9.12 && git submodule update
+  ```
+  The build runs `./bootstrap` on it without network. Such a build has no
+  translations (commands are English only).
 
-Arch's recipe is not copied in here. Every build fetches Arch's current one
-into `arch/coreutils/` and shows what changed since the last build. Arch's
-fixes therefore arrive with your next build, without editing anything.
-`arch/coreutils.wiamox/` is the recipe that actually gets built: Arch's
-PKGBUILD unchanged, plus a block at the end that applies your patches after
-Arch's `prepare()` and adds `WIAMOX_PKGREL` to `pkgrel`.
+What happens:
 
-**Versions:** after changing `patches/` while Arch's version stays the same,
-raise `WIAMOX_PKGREL` (1 → 2). When Arch's version changes, set it back to
-1. `build.sh` refuses to replace a version woxKitchen already has, so you
-don't forget.
+1. `pkgver` is read from your tree (`build-aux/git-version-gen`): `9.12`
+   for a tarball, e.g. `9.12.15.a1b2c` for a clone 15 commits past `v9.12`.
+2. Your tree is copied into the build folder, without `.git` and `*.o`,
+   then cleaned with `make distclean`. **Your own tree is never changed**,
+   so you can keep editing and test-compiling in it.
+3. It is configured and built the way Arch builds coreutils
+   (`--prefix=/usr --libexecdir=/usr/lib --with-openssl`, no LTO, same
+   dependencies), and the test suite runs. Failed tests give a warning
+   with the log path; they don't stop the build.
+4. The package is called `coreutils` and replaces Arch's: `[custom]` comes
+   before `[core]`, so the ISO and the offline repo take yours.
 
-**Keep it current:** `[custom]` comes before `[core]`, so the ISO and the
-offline repo always take your coreutils, even when Arch has a newer one.
-Rebuild whenever Arch updates coreutils (`pacman -Si coreutils` on the build
-machine shows the version on the mirrors), or users miss Arch's fixes.
+**Rebuilding the same version:** after editing the code without a new
+coreutils version, raise `pkgrel` in `coreutils/PKGBUILD` (1 → 2). Like for
+the kernel, `build.sh` refuses to overwrite a version woxKitchen already
+has (`--force` to override).
+
+**Keep it current.** Your coreutils stays on the ISO even when Arch
+releases a newer one, with fixes. Move your changes to new coreutils
+versions now and then. Arch sometimes carries its own fixes on top of a
+release (their recipe's `*.patch` files); apply those to your tree too if
+you want them.
 
 **It is a core package.** A broken coreutils breaks booting and logging
-in. Install and try the package on the build machine or in a VM before
-building the ISO with it.
-
-The build needs internet: Arch's recipe from gitlab.archlinux.org, and the
-coreutils and gnulib sources from git.savannah.gnu.org. The signing key
-for the coreutils release comes with Arch's recipe and is imported
-automatically.
+in. Install it on the build machine or in a VM first
+(`sudo pacman -U out/coreutils-*.pkg.tar.zst`) and try a few commands.
 
 ## Publishing woxKitchen online
 
@@ -268,7 +287,7 @@ scripts/build.sh linux            # -> woxKitchen
 scripts/build.sh calamares        # (when the AUR recipe or Python changed)
 scripts/build.sh calamares-wiamox
 scripts/build.sh woxed
-scripts/build.sh coreutils        # after changing patches/ or when Arch updates it
+scripts/build.sh coreutils        # after editing your coreutils tree
 # build the ISO with woxKitchen (local mode), test it
 scripts/publish.sh                # -> online, for everyone else
 ```

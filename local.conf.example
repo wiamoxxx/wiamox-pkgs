@@ -5,6 +5,11 @@
 # Your edits in this tree are what gets packaged.
 WIAMOX_KERNEL_SRC=/home/lol/wiamox-kernel/linux-7.2.8
 
+# coreutils source tree to build from (the folder with configure.ac): an
+# unpacked release tarball, or a git clone with the gnulib submodule.
+# Your edits in this tree are what gets packaged.
+WIAMOX_COREUTILS_SRC=/home/lol/wiamox-coreutils/coreutils-9.12
+
 # fragments = x86_64_defconfig + linux/wiamox-base.config + linux/wiamox-drivers.config
 # full      = linux/config exactly as it is
 WIAMOX_KERNEL_CONFIG=fragments

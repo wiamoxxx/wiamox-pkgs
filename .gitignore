@@ -9,6 +9,5 @@
 *.pkg.tar.*
 *.log
 
-# AUR and Arch recipes cloned by scripts/build.sh
+# AUR recipes cloned by scripts/build.sh
 /aur/
-/arch/

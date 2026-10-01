@@ -127,59 +127,6 @@ recipe_update() {
   git -C "$dir" merge --quiet --ff-only "$new"
 }
 
-# Makes the recipe that is actually built for an Arch package with WiamOX
-# changes: a copy of Arch's recipe ($1) plus the patches in $2/patches/,
-# written to $3. Arch's PKGBUILD stays as it is; a block appended at its
-# end applies the patches after Arch's prepare() and appends WIAMOX_PKGREL
-# (from $2/wiamox.conf) to pkgrel: 9.12-2 -> 9.12-2.1.
-# The patches are NOT added to source=(): some Arch recipes (coreutils)
-# apply every *.patch in source=() themselves, which would apply ours twice.
-# They are read from the recipe folder ($startdir) instead.
-make_wiamox_recipe() {
-  local arch=$1 own=$2 out=$3 p count=0
-  # The source folder name is expanded by makepkg, not here.
-  # shellcheck disable=SC2016
-  local WIAMOX_PKGREL=1 WIAMOX_SRC_DIR='$pkgname-$pkgver'
-  if [[ -r $own/wiamox.conf ]]; then
-    # shellcheck disable=SC1091
-    source "$own/wiamox.conf"
-  fi
-  [[ $WIAMOX_PKGREL =~ ^[0-9]+$ ]] || die "WIAMOX_PKGREL in $own/wiamox.conf must be a number."
-
-  rm -rf "$out"
-  mkdir -p "$out/wiamox-patches"
-  cp -a "$arch"/. "$out"/
-  rm -rf "$out/.git"
-  for p in "$own"/patches/*.patch; do
-    [[ -e $p ]] || continue
-    cp -- "$p" "$out/wiamox-patches/"
-    count=$((count + 1))
-  done
-
-  cat >>"$out/PKGBUILD" <<EOF
-
-# ---- WiamOX additions, written by wiamox-pkgs/scripts/build.sh ----------
-# Everything above is Arch's recipe, unchanged ($(git -C "$arch" log -1 --format='%h %cs' 2>/dev/null)).
-pkgrel+=.$WIAMOX_PKGREL
-if declare -f prepare >/dev/null; then
-  eval "_arch_\$(declare -f prepare)"
-fi
-prepare() {
-  if declare -f _arch_prepare >/dev/null; then
-    (_arch_prepare)
-  fi
-  cd "\$srcdir/$WIAMOX_SRC_DIR"
-  local _p
-  for _p in "\$startdir"/wiamox-patches/*.patch; do
-    [[ -e \$_p ]] || continue
-    echo "Applying WiamOX patch \${_p##*/}"
-    patch -Np1 -i "\$_p"
-  done
-}
-EOF
-  msg "Recipe: Arch's $(basename "$arch") + $count WiamOX patch(es), pkgrel +.$WIAMOX_PKGREL"
-}
-
 # Checks every program and shared library in the given package files:
 # each library it needs must exist on this machine (or come with the
 # packages themselves), and none may be loaded from /home. Prints the

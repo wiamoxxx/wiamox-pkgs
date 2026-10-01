@@ -1,0 +1,158 @@
+# Maintainer: Wiam Khader
+#
+# WiamOX coreutils, built from a coreutils source tree on this machine.
+#
+# There is no download: the source is whatever is in $WIAMOX_COREUTILS_SRC,
+# including your own edits. Set it in ../local.conf (see local.conf.example)
+# or in the environment. ../scripts/build.sh is the normal way to run this.
+#
+# The package is named "coreutils" on purpose, so it replaces Arch's
+# wherever [woxkitchen] / [custom] comes before [core] in pacman.conf.
+# Build options, dependencies and install steps follow Arch's recipe.
+#
+# The source tree can be
+#   - an unpacked release tarball (coreutils-9.12/): has ./configure and
+#     the translations, nothing else needed;
+#   - a git clone with the gnulib submodule checked out
+#     (git clone --recurse-submodules): ./bootstrap runs here, without
+#     network; translations are not included then.
+#
+# pkgver is read from the source tree (build-aux/git-version-gen: the
+# tarball's .tarball-version, or `git describe` in a clone). Rebuilding the
+# same version after editing the source? Bump pkgrel, otherwise pacman will
+# not update installed systems.
+
+pkgname=coreutils
+pkgver=9.12
+pkgrel=1
+pkgdesc='The basic file, shell and text manipulation utilities of the GNU operating system (WiamOX build)'
+arch=(x86_64)
+url='https://github.com/wiamoxxx/wiamox-pkgs'
+license=(
+  GPL-3.0-or-later
+  GFDL-1.3-or-later
+)
+depends=(
+  acl
+  attr
+  glibc
+  gmp
+  libcap
+  openssl
+)
+# gperf, python: ./bootstrap and the build; the rest of the autotools come
+# with base-devel.
+makedepends=(
+  gperf
+  python
+)
+options=(!lto)
+source=()
+sha256sums=()
+
+_srcname=coreutils-wiamox
+
+# WIAMOX_* from the environment win over ../local.conf.
+_load_conf() {
+  local conf="$startdir/../local.conf"
+  if [[ -r $conf ]]; then
+    local src=${WIAMOX_COREUTILS_SRC-}
+    # shellcheck disable=SC1090
+    source "$conf"
+    [[ -n $src ]] && WIAMOX_COREUTILS_SRC=$src
+  fi
+  if [[ ! -f ${WIAMOX_COREUTILS_SRC-}/configure.ac || ! -x ${WIAMOX_COREUTILS_SRC-}/build-aux/git-version-gen ]]; then
+    error "WIAMOX_COREUTILS_SRC must point to a coreutils source tree (the folder with configure.ac)."
+    plain "Currently: '${WIAMOX_COREUTILS_SRC-}'. Set it in local.conf or the environment."
+    return 1
+  fi
+}
+
+# The version as coreutils itself reports it: 9.12 for a release tarball,
+# e.g. 9.12.15-a1b2c for a clone 15 commits after v9.12. "-dirty"
+# (uncommitted edits) is dropped; pkgrel covers that.
+_version_raw() {
+  local v
+  v=$(cd "$1" && build-aux/git-version-gen .tarball-version 2>/dev/null) || return 1
+  v=${v%-dirty}
+  [[ $v =~ ^[0-9] ]] || return 1
+  printf '%s\n' "$v"
+}
+
+pkgver() {
+  _load_conf || return 1
+  local v
+  if ! v=$(_version_raw "$WIAMOX_COREUTILS_SRC"); then
+    error "Cannot read the coreutils version from $WIAMOX_COREUTILS_SRC."
+    plain "A release tarball has .tarball-version; a git clone needs its .git folder and tags."
+    return 1
+  fi
+  # pacman versions cannot contain '-'.
+  printf '%s\n' "${v//-/.}"
+}
+
+prepare() {
+  _load_conf || return 1
+  local version
+  version=$(_version_raw "$WIAMOX_COREUTILS_SRC")
+
+  echo "Copying coreutils source from $WIAMOX_COREUTILS_SRC ..."
+  rm -rf "${srcdir:?}/$_srcname"
+  mkdir -p "$srcdir/$_srcname"
+  tar -C "$WIAMOX_COREUTILS_SRC" --exclude=.git --exclude='*.o' -cf - . |
+    tar -C "$srcdir/$_srcname" -xf -
+
+  cd "$srcdir/$_srcname"
+  # Without .git, configure takes the version from here.
+  printf '%s\n' "$version" > .tarball-version
+  # Clear anything left over from builds in your own source tree.
+  if [[ -f Makefile ]]; then
+    make -s distclean || :
+  fi
+
+  if [[ ! -x configure ]]; then
+    if [[ ! -f gnulib/gnulib-tool ]]; then
+      error "This is a git clone without gnulib. In $WIAMOX_COREUTILS_SRC run:"
+      plain "git submodule update --init"
+      return 1
+    fi
+    echo "Running ./bootstrap (no network, no translations) ..."
+    SKIP_PO=1 GNULIB_TOOL_IMPL=sh ./bootstrap --skip-po --no-git --gnulib-srcdir=gnulib
+  fi
+  echo "Prepared $pkgname $version"
+}
+
+build() {
+  cd "$srcdir/$_srcname"
+  ./configure \
+    --prefix=/usr \
+    --libexecdir=/usr/lib \
+    --with-openssl
+  make
+}
+
+check() {
+  cd "$srcdir/$_srcname"
+  # The full test suite. Failures are reported, not fatal (Arch does the
+  # same); read the log before you ship a build with failures.
+  if ! make check; then
+    warning "Some coreutils tests failed: $srcdir/$_srcname/tests/test-suite.log"
+  fi
+}
+
+package() {
+  cd "$srcdir/$_srcname"
+  make DESTDIR="$pkgdir" install
+
+  # Dates (ls -l, date) look up the translation under LC_TIME. A release
+  # tarball's `make install` puts it there already; link any that is
+  # missing, as Arch's package does.
+  local mo dir
+  for mo in "$pkgdir"/usr/share/locale/*/LC_MESSAGES/coreutils.mo; do
+    [[ -e $mo ]] || continue
+    dir=${mo%/LC_MESSAGES/*}
+    [[ -e $dir/LC_TIME/coreutils.mo ]] && continue
+    install -dm755 "$dir/LC_TIME"
+    ln -s ../LC_MESSAGES/coreutils.mo "$dir/LC_TIME/coreutils.mo"
+  done
+}
