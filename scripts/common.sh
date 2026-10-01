@@ -128,12 +128,15 @@ recipe_update() {
 }
 
 # Makes the recipe that is actually built for an Arch package with WiamOX
-# changes: a copy of Arch's recipe ($1), plus the patches in $2/patches/,
-# written to $3. Arch's PKGBUILD stays as it is; a block appended at its end
-# adds the patches to source=(), applies them after Arch's prepare(), and
-# appends WIAMOX_PKGREL (from $2/wiamox.conf) to pkgrel: 9.8-1 -> 9.8-1.1.
+# changes: a copy of Arch's recipe ($1) plus the patches in $2/patches/,
+# written to $3. Arch's PKGBUILD stays as it is; a block appended at its
+# end applies the patches after Arch's prepare() and appends WIAMOX_PKGREL
+# (from $2/wiamox.conf) to pkgrel: 9.12-2 -> 9.12-2.1.
+# The patches are NOT added to source=(): some Arch recipes (coreutils)
+# apply every *.patch in source=() themselves, which would apply ours twice.
+# They are read from the recipe folder ($startdir) instead.
 make_wiamox_recipe() {
-  local arch=$1 own=$2 out=$3 p name patches=()
+  local arch=$1 own=$2 out=$3 p count=0
   # The source folder name is expanded by makepkg, not here.
   # shellcheck disable=SC2016
   local WIAMOX_PKGREL=1 WIAMOX_SRC_DIR='$pkgname-$pkgver'
@@ -144,50 +147,37 @@ make_wiamox_recipe() {
   [[ $WIAMOX_PKGREL =~ ^[0-9]+$ ]] || die "WIAMOX_PKGREL in $own/wiamox.conf must be a number."
 
   rm -rf "$out"
-  mkdir -p "$out"
+  mkdir -p "$out/wiamox-patches"
   cp -a "$arch"/. "$out"/
   rm -rf "$out/.git"
   for p in "$own"/patches/*.patch; do
     [[ -e $p ]] || continue
-    name="wiamox-$(basename "$p")"
-    cp -- "$p" "$out/$name"
-    patches+=("$name")
+    cp -- "$p" "$out/wiamox-patches/"
+    count=$((count + 1))
   done
 
-  {
-    echo
-    echo "# ---- WiamOX additions, written by wiamox-pkgs/scripts/build.sh ----------"
-    echo "# Everything above is Arch's recipe, unchanged ($(git -C "$arch" log -1 --format='%h %cs' 2>/dev/null))."
-    printf '_wiamox_patches=('
-    printf ' %q' "${patches[@]}"
-    printf ' )\n'
-    cat <<EOF
+  cat >>"$out/PKGBUILD" <<EOF
+
+# ---- WiamOX additions, written by wiamox-pkgs/scripts/build.sh ----------
+# Everything above is Arch's recipe, unchanged ($(git -C "$arch" log -1 --format='%h %cs' 2>/dev/null)).
 pkgrel+=.$WIAMOX_PKGREL
-source+=("\${_wiamox_patches[@]}")
-# Local patch files from this repo; every checksum list gets a SKIP each.
-for _sums in cksums md5sums sha1sums sha224sums sha256sums sha384sums sha512sums b2sums; do
-  if declare -p "\$_sums" &>/dev/null; then
-    for _p in "\${_wiamox_patches[@]}"; do eval "\$_sums+=(SKIP)"; done
-  fi
-done
-unset _sums _p
 if declare -f prepare >/dev/null; then
   eval "_arch_\$(declare -f prepare)"
 fi
 prepare() {
   if declare -f _arch_prepare >/dev/null; then
-    _arch_prepare
+    (_arch_prepare)
   fi
   cd "\$srcdir/$WIAMOX_SRC_DIR"
   local _p
-  for _p in "\${_wiamox_patches[@]}"; do
-    echo "Applying WiamOX patch \$_p"
-    patch -Np1 -i "\$srcdir/\$_p"
+  for _p in "\$startdir"/wiamox-patches/*.patch; do
+    [[ -e \$_p ]] || continue
+    echo "Applying WiamOX patch \${_p##*/}"
+    patch -Np1 -i "\$_p"
   done
 }
 EOF
-  } >>"$out/PKGBUILD"
-  msg "Recipe: Arch's $(basename "$arch") + ${#patches[@]} WiamOX patch(es), pkgrel +.$WIAMOX_PKGREL"
+  msg "Recipe: Arch's $(basename "$arch") + $count WiamOX patch(es), pkgrel +.$WIAMOX_PKGREL"
 }
 
 # Checks every program and shared library in the given package files:
