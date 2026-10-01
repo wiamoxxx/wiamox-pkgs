@@ -9,6 +9,7 @@
 #   scripts/build.sh calamares-wiamox     the installer config (git submodule)
 #   scripts/build.sh woxed                the WiamOX Editor (git submodule)
 #   scripts/build.sh calamares            the installer program, from the AUR
+#   scripts/build.sh coreutils            Arch's coreutils + patches in coreutils/
 #   scripts/build.sh <pkg> --no-libcheck  skip the shared-library check
 #
 # Packages go to out/, logs to build/logs/. Settings come from local.conf
@@ -20,7 +21,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 usage() {
-  sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -48,14 +49,32 @@ command -v makepkg >/dev/null || die "makepkg not found (this needs an Arch-base
 # Packages built straight from the AUR. Their recipes are not part of this
 # repo: they are cloned into aur/<name> and updated on every build.
 aur_packages=(calamares)
-is_aur=0
+# Arch packages with WiamOX changes: Arch's current recipe is cloned into
+# arch/<name> on every build, and <name>/patches/*.patch from this repo are
+# applied on top (see make_wiamox_recipe in common.sh).
+arch_packages=(coreutils)
+is_aur=0 is_arch=0
 for name in "${aur_packages[@]}"; do
   [[ $pkg != "$name" ]] || is_aur=1
+done
+for name in "${arch_packages[@]}"; do
+  [[ $pkg != "$name" ]] || is_arch=1
 done
 
 if (( is_aur )); then
   pkgdir="$ROOT/aur/$pkg"
-  aur_update "$pkgdir" "$pkg"
+  recipe_update "$pkgdir" "$pkg" "https://aur.archlinux.org/$pkg.git" "the AUR" ask
+elif (( is_arch )); then
+  recipe_update "$ROOT/arch/$pkg" "$pkg" \
+    "https://gitlab.archlinux.org/archlinux/packaging/packages/$pkg.git" "Arch"
+  pkgdir="$ROOT/arch/$pkg.wiamox"
+  make_wiamox_recipe "$ROOT/arch/$pkg" "$ROOT/$pkg" "$pkgdir"
+  # Arch keeps the signing keys of the source tarballs next to the recipe;
+  # makepkg needs them to verify the download.
+  if compgen -G "$ROOT/arch/$pkg/keys/pgp/*.asc" >/dev/null; then
+    gpg --quiet --import "$ROOT/arch/$pkg"/keys/pgp/*.asc 2>/dev/null ||
+      warn "Could not import the PGP keys in arch/$pkg/keys/pgp/."
+  fi
 else
   pkgdir="$ROOT/$pkg"
   # Submodules (calamares-wiamox, woxed) are empty after a plain git clone.
@@ -131,6 +150,11 @@ else
       if (( is_aur )); then
         die "woxKitchen already has $name. To rebuild the same AUR version (e.g. after a
     Python update in Arch), use --force to replace it."
+      fi
+      if (( is_arch )); then
+        die "woxKitchen already has $name. After changing $pkg/patches/ without a new Arch
+    version, raise WIAMOX_PKGREL in $pkg/wiamox.conf (otherwise pacman will not
+    update installed systems), or use --force to replace it."
       fi
       die "woxKitchen already has $name. Bump pkgver or pkgrel in $pkg/PKGBUILD
     (otherwise pacman will not update installed systems), or use --force to replace it."

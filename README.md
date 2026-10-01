@@ -10,6 +10,7 @@ script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 | `calamares-wiamox/` | `calamares-wiamox`: installer branding and config | git submodule → [wiamoxxx/calamares-wiamox](https://github.com/wiamoxxx/calamares-wiamox) |
 | `woxed/` | `woxed`: the WiamOX Editor | git submodule → [wiamoxxx/woxed](https://github.com/wiamoxxx/woxed) |
 | `aur/calamares/` | `calamares`: the installer program | the AUR, cloned on first build (not part of this repo) |
+| `coreutils/` | `coreutils` with WiamOX patches | Arch's current recipe, cloned into `arch/coreutils/` on every build, plus `coreutils/patches/` |
 
 Finished packages go to `out/`, build logs to `build/logs/`, downloaded
 sources to `build/sources/`.
@@ -184,6 +185,45 @@ the library check above prevent. If you ever build a package with plain
 `Found Python3: /usr/bin/python3...` and run
 `ldd /usr/bin/<program> | grep 'not found'` after installing it.
 
+## Building coreutils (Arch's, with WiamOX patches)
+
+```sh
+scripts/build.sh coreutils
+```
+
+This repo only holds the WiamOX part:
+
+- `coreutils/patches/*.patch`: your changes, applied in name order.
+  `coreutils/patches/README.md` shows how to make one.
+- `coreutils/wiamox.conf`: `WIAMOX_PKGREL`, the WiamOX release on top of
+  Arch's. Arch's `9.12-2` becomes `9.12-2.1`.
+
+Arch's recipe is not copied in here. Every build fetches Arch's current one
+into `arch/coreutils/` and shows what changed since the last build. Arch's
+fixes therefore arrive with your next build, without editing anything.
+`arch/coreutils.wiamox/` is the recipe that actually gets built: Arch's
+PKGBUILD unchanged, plus a block at the end that applies your patches after
+Arch's `prepare()` and adds `WIAMOX_PKGREL` to `pkgrel`.
+
+**Versions:** after changing `patches/` while Arch's version stays the same,
+raise `WIAMOX_PKGREL` (1 → 2). When Arch's version changes, set it back to
+1. `build.sh` refuses to replace a version woxKitchen already has, so you
+don't forget.
+
+**Keep it current:** `[custom]` comes before `[core]`, so the ISO and the
+offline repo always take your coreutils, even when Arch has a newer one.
+Rebuild whenever Arch updates coreutils (`pacman -Si coreutils` on the build
+machine shows the version on the mirrors), or users miss Arch's fixes.
+
+**It is a core package.** A broken coreutils breaks booting and logging
+in. Install and try the package on the build machine or in a VM before
+building the ISO with it.
+
+The build needs internet: Arch's recipe from gitlab.archlinux.org, and the
+coreutils and gnulib sources from git.savannah.gnu.org. The signing key
+for the coreutils release comes with Arch's recipe and is imported
+automatically.
+
 ## Publishing woxKitchen online
 
 ```sh
@@ -228,6 +268,7 @@ scripts/build.sh linux            # -> woxKitchen
 scripts/build.sh calamares        # (when the AUR recipe or Python changed)
 scripts/build.sh calamares-wiamox
 scripts/build.sh woxed
+scripts/build.sh coreutils        # after changing patches/ or when Arch updates it
 # build the ISO with woxKitchen (local mode), test it
 scripts/publish.sh                # -> online, for everyone else
 ```

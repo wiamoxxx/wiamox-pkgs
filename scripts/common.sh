@@ -92,18 +92,24 @@ confirm() {
   [[ $answer == [yY]* ]] || die "Stopped."
 }
 
-# Clones an AUR package into $1 (name $2), or updates the existing clone.
-# AUR recipes are written by other people: new ones and every change since
-# the last build are shown before anything is built.
-aur_update() {
-  local dir=$1 name=$2 old new
+# Clones a package recipe (git URL $3) into $1, or updates the existing
+# clone, and shows every change since the last build. $2 is the package
+# name, $4 where it comes from ("the AUR", "Arch"). AUR recipes are written
+# by other people: with $5 = ask, a new recipe and every change must be
+# confirmed before anything is built.
+recipe_update() {
+  local dir=$1 name=$2 url=$3 from=$4 ask=${5-} old new
   command -v git >/dev/null || die "git not found."
   if [[ ! -d $dir/.git ]]; then
-    msg "Cloning $name from the AUR into $dir ..."
-    git clone --quiet "https://aur.archlinux.org/$name.git" "$dir"
-    [[ -f $dir/PKGBUILD ]] || { rm -rf "$dir"; die "The AUR has no package called $name."; }
-    msg "First build of $name from the AUR. Read $dir/PKGBUILD before continuing."
-    confirm "Build $name?"
+    msg "Cloning $name from $from into $dir ..."
+    mkdir -p "$(dirname "$dir")"
+    git clone --quiet "$url" "$dir" ||
+      { rm -rf "$dir"; die "Could not clone $url."; }
+    [[ -f $dir/PKGBUILD ]] || { rm -rf "$dir"; die "$from has no package called $name."; }
+    if [[ $ask == ask ]]; then
+      msg "First build of $name from $from. Read $dir/PKGBUILD before continuing."
+      confirm "Build $name?"
+    fi
     return
   fi
 
@@ -111,14 +117,67 @@ aur_update() {
   git -C "$dir" fetch --quiet origin
   new=$(git -C "$dir" rev-parse '@{upstream}')
   if [[ $old == "$new" ]]; then
-    msg "$name: AUR recipe unchanged since the last build."
+    msg "$name: recipe from $from unchanged since the last build."
     return
   fi
-  msg "$name: the AUR recipe changed since the last build:"
+  msg "$name: the recipe from $from changed since the last build:"
   git -C "$dir" --no-pager log --oneline "$old..$new"
   git -C "$dir" --no-pager diff "$old" "$new" -- . ':!.SRCINFO'
-  confirm "Build $name with these changes?"
+  [[ $ask != ask ]] || confirm "Build $name with these changes?"
   git -C "$dir" merge --quiet --ff-only "$new"
+}
+
+# Makes the recipe that is actually built for an Arch package with WiamOX
+# changes: a copy of Arch's recipe ($1) plus the patches in $2/patches/,
+# written to $3. Arch's PKGBUILD stays as it is; a block appended at its
+# end applies the patches after Arch's prepare() and appends WIAMOX_PKGREL
+# (from $2/wiamox.conf) to pkgrel: 9.12-2 -> 9.12-2.1.
+# The patches are NOT added to source=(): some Arch recipes (coreutils)
+# apply every *.patch in source=() themselves, which would apply ours twice.
+# They are read from the recipe folder ($startdir) instead.
+make_wiamox_recipe() {
+  local arch=$1 own=$2 out=$3 p count=0
+  # The source folder name is expanded by makepkg, not here.
+  # shellcheck disable=SC2016
+  local WIAMOX_PKGREL=1 WIAMOX_SRC_DIR='$pkgname-$pkgver'
+  if [[ -r $own/wiamox.conf ]]; then
+    # shellcheck disable=SC1091
+    source "$own/wiamox.conf"
+  fi
+  [[ $WIAMOX_PKGREL =~ ^[0-9]+$ ]] || die "WIAMOX_PKGREL in $own/wiamox.conf must be a number."
+
+  rm -rf "$out"
+  mkdir -p "$out/wiamox-patches"
+  cp -a "$arch"/. "$out"/
+  rm -rf "$out/.git"
+  for p in "$own"/patches/*.patch; do
+    [[ -e $p ]] || continue
+    cp -- "$p" "$out/wiamox-patches/"
+    count=$((count + 1))
+  done
+
+  cat >>"$out/PKGBUILD" <<EOF
+
+# ---- WiamOX additions, written by wiamox-pkgs/scripts/build.sh ----------
+# Everything above is Arch's recipe, unchanged ($(git -C "$arch" log -1 --format='%h %cs' 2>/dev/null)).
+pkgrel+=.$WIAMOX_PKGREL
+if declare -f prepare >/dev/null; then
+  eval "_arch_\$(declare -f prepare)"
+fi
+prepare() {
+  if declare -f _arch_prepare >/dev/null; then
+    (_arch_prepare)
+  fi
+  cd "\$srcdir/$WIAMOX_SRC_DIR"
+  local _p
+  for _p in "\$startdir"/wiamox-patches/*.patch; do
+    [[ -e \$_p ]] || continue
+    echo "Applying WiamOX patch \${_p##*/}"
+    patch -Np1 -i "\$_p"
+  done
+}
+EOF
+  msg "Recipe: Arch's $(basename "$arch") + $count WiamOX patch(es), pkgrel +.$WIAMOX_PKGREL"
 }
 
 # Checks every program and shared library in the given package files:
