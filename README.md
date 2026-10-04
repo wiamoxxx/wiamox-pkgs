@@ -8,6 +8,7 @@ script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 |---|---|---|
 | `linux/` | `linux`, `linux-headers`: the WiamOX kernel | a kernel source tree **on your disk** (with your own edits) |
 | `calamares-wiamox/` | `calamares-wiamox`: installer branding and config | git submodule → [wiamoxxx/calamares-wiamox](https://github.com/wiamoxxx/calamares-wiamox) |
+| `ai-center/` | `ai-center`: WiamOX AI Center (local AI launcher: llama.cpp via Podman, ComfyUI, ACE-Step, OpenCode) | git submodule → [wiamoxxx/ai-center](https://github.com/wiamoxxx/ai-center) |
 | `woxed/` | `woxed`: the WiamOX Editor | git submodule → [wiamoxxx/woxed](https://github.com/wiamoxxx/woxed) |
 | `aur/calamares/` | `calamares`: the installer program | the AUR, cloned on first build (not part of this repo) |
 | `coreutils/` | `coreutils`: the basic commands (`ls`, `cp`, ...) | a coreutils source tree **on your disk** (with your own edits) |
@@ -130,6 +131,21 @@ To try a change before pushing it, edit the files directly in
 `calamares-wiamox/` here and build; `build.sh` warns that it is building
 uncommitted changes. Commit and push them from inside that folder
 afterwards (it is a normal clone of the calamares-wiamox repo).
+
+## Building ai-center
+
+```bash
+scripts/build.sh ai-center
+```
+
+Builds the pinned version recorded in the `ai-center/` submodule: the
+launcher only (arch `any`, needs `podman`, `python-textual`,
+`python-tomlkit` from Arch). Models, container images and GPU setup are
+per-user data, not part of the package. Run it with `wiamox-ai-center`.
+To put it on the ISO, `ai-center` must be listed in woxclean1's
+`packages.x86_64`. Newer version: change it in its own repo, bump
+`pkgver`/`pkgrel`, then `git submodule update --remote ai-center`, commit,
+build.
 
 ## Building woxed
 
