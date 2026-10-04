@@ -19,6 +19,12 @@ WIAMOX_KERNEL_CONFIG=fragments
 WIAMOX_KITCHEN=/home/lol/woxKitchen
 WIAMOX_KITCHEN_DB=custom
 
+# ai-center: folder with the container image bundles (comfyui-cuda-<ver>.tar.zst
+# + .json, made by ai-center/scripts/build-comfyui-image.sh) to put into the
+# package. Default: ai-center/images. Empty/no bundles = launcher only.
+# Mind the size: the package grows by the size of the bundles.
+#WIAMOX_AI_CENTER_IMAGES=/home/lol/ai-center-images
+
 # Where makepkg compiles (the kernel needs about 30 GB). Default: build/ in this repo.
 #WIAMOX_BUILDDIR=/mnt/big-disk/wiamox-build
 

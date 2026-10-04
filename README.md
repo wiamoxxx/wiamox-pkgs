@@ -139,9 +139,21 @@ scripts/build.sh ai-center
 ```
 
 Builds the pinned version recorded in the `ai-center/` submodule: the
-launcher only (arch `any`, needs `podman`, `python-textual`,
-`python-tomlkit` from Arch). Models, container images and GPU setup are
-per-user data, not part of the package. Run it with `wiamox-ai-center`.
+launcher plus the container build files (arch `any`, needs `podman`,
+`python-textual`, `python-tomlkit`, `zstd` from Arch). Models and GPU
+setup are per-user data, not part of the package. Run it with
+`wiamox-ai-center`.
+
+**ComfyUI image bundles** (optional, several GB): build them once with
+`ai-center/scripts/build-comfyui-image.sh` (see
+`ai-center/containers/comfyui/README.md`), then point
+`WIAMOX_AI_CENTER_IMAGES` in `local.conf` at the folder holding the
+`.tar.zst` + `.json` files (default: `ai-center/images/`). `build.sh` shows
+which bundles go in; they are installed to
+`/usr/share/wiamox-ai-center/images/`, where AI Center imports them on the
+first ComfyUI start. Without bundles the package has only the launcher and
+the ComfyUI build files (AI Center can then build online or import later).
+
 To put it on the ISO, `ai-center` must be listed in woxclean1's
 `packages.x86_64`. Newer version: change it in its own repo, bump
 `pkgver`/`pkgrel`, then `git submodule update --remote ai-center`, commit,

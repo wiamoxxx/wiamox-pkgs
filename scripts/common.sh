@@ -136,7 +136,8 @@ check_libs() {
   tmp=$(mktemp -d)
   for f in "$@"; do
     bsdtar -xf "$f" -C "$tmp" --exclude '.PKGINFO' --exclude '.BUILDINFO' \
-      --exclude '.MTREE' --exclude '.INSTALL'
+      --exclude '.MTREE' --exclude '.INSTALL' \
+      --exclude 'usr/share/wiamox-ai-center/images/*'  # GB-sized image bundles, no ELF files
   done
   # Libraries shipped in the packages count as present.
   lib_path=$(find "$tmp" -type f -name '*.so*' -printf '%h\n' | sort -u | paste -sd:)
