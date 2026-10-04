@@ -92,7 +92,7 @@ something important. User-facing details are in README.md.
 
 ## 6. Status (keep updated)
 
-- 04.10.2026: `ai-center` 0.3.0 (submodule pinned to `18e77e0`, merged `main` of wiamoxxx/ai-center: new look with themes, logo, status borders; 0.2.0 added ComfyUI as a Podman container, `containers/` + optional image bundles in the package). `build.sh` passes `WIAMOX_AI_CENTER_IMAGES` to the PKGBUILD as `AI_CENTER_IMAGES`; `check_libs` skips the bundles. `makepkg` not run yet; no bundle built yet. Newer: `git submodule update --remote ai-center`.
+- 04.10.2026: `ai-center` 0.3.0 (submodule pinned to `9513a89`, merged `main` of wiamoxxx/ai-center: ComfyUI image fixes (node submodules, pyproject deps, import disk-space check, `--extra-arg`) on top of the 0.3.0 look with themes, logo, status borders; 0.2.0 added ComfyUI as a Podman container, `containers/` + optional image bundles in the package). `build.sh` passes `WIAMOX_AI_CENTER_IMAGES` to the PKGBUILD as `AI_CENTER_IMAGES`; `check_libs` skips the bundles. `makepkg` not run yet; no bundle built yet. Newer: `git submodule update --remote ai-center`.
 - Done (PRs #1–#5, 30.09.–01.10.2026): woxed + calamares + coreutils in
   build.sh, clean env, library check, one-database guard, coreutils from a
   source tree.
