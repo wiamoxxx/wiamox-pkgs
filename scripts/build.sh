@@ -8,6 +8,7 @@
 #   scripts/build.sh linux --force        rebuild a version woxKitchen already has
 #   scripts/build.sh calamares-wiamox     the installer config (git submodule)
 #   scripts/build.sh woxed                the WiamOX Editor (git submodule)
+#   scripts/build.sh ai-center            the WiamOX AI Center launcher (git submodule)
 #   scripts/build.sh calamares            the installer program, from the AUR
 #   scripts/build.sh coreutils            coreutils from your source tree
 #   scripts/build.sh <pkg> --no-libcheck  skip the shared-library check
@@ -21,7 +22,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 usage() {
-  sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -59,7 +60,7 @@ if (( is_aur )); then
   recipe_update "$pkgdir" "$pkg" "https://aur.archlinux.org/$pkg.git" "the AUR" ask
 else
   pkgdir="$ROOT/$pkg"
-  # Submodules (calamares-wiamox, woxed) are empty after a plain git clone.
+  # Submodules (calamares-wiamox, woxed, ai-center) are empty after a plain git clone.
   if [[ ! -f $pkgdir/PKGBUILD ]] &&
      git -C "$ROOT" config -f .gitmodules --get "submodule.$pkg.path" >/dev/null 2>&1; then
     msg "Fetching the $pkg submodule ..."

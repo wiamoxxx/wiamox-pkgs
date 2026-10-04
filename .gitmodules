@@ -6,3 +6,7 @@
 	path = woxed
 	url = https://github.com/wiamoxxx/woxed.git
 	branch = main
+[submodule "ai-center"]
+	path = ai-center
+	url = https://github.com/wiamoxxx/ai-center.git
+	branch = main

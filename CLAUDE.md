@@ -26,6 +26,7 @@ something important. User-facing details are in README.md.
 | `linux`, `linux-headers` | `linux/` | kernel tree on disk (`WIAMOX_KERNEL_SRC`) | named `linux` to replace Arch's; config from fragments; ~30 GB to build |
 | `calamares-wiamox` | `calamares-wiamox/` | git submodule (wiamoxxx/calamares-wiamox) | config-only, `--nodeps` |
 | `woxed` | `woxed/` | git submodule (wiamoxxx/woxed) | needs internet at build time; `WOXED_JOBS` for parser compile |
+| `ai-center` | `ai-center/` | git submodule (wiamoxxx/ai-center) | PKGBUILD lives in that repo; launcher only, `arch=any`, `--nodeps` (no makedepends); project memory in its CLAUDE.md |
 | `calamares` | `aur/calamares/` (gitignored) | the AUR, cloned/updated by build.sh | links libpython → rebuild after every Python update (`--force`) |
 | `coreutils` | `coreutils/` | coreutils tree on disk (`WIAMOX_COREUTILS_SRC`) | release tarball or git clone + gnulib; Arch's configure flags |
 
@@ -91,6 +92,7 @@ something important. User-facing details are in README.md.
 
 ## 6. Status (keep updated)
 
+- 04.10.2026: `ai-center` added (submodule pinned to a commit on branch `claude/laughing-dijkstra-bly30s` of wiamoxxx/ai-center until that is merged; then `git submodule update --remote ai-center`). `makepkg` not run yet.
 - Done (PRs #1–#5, 30.09.–01.10.2026): woxed + calamares + coreutils in
   build.sh, clean env, library check, one-database guard, coreutils from a
   source tree.
