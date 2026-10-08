@@ -9,6 +9,7 @@ script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 | `linux/` | `linux`, `linux-headers`: the WiamOX kernel | a kernel source tree **on your disk** (with your own edits) |
 | `calamares-wiamox/` | `calamares-wiamox`: installer branding and config | git submodule → [wiamoxxx/calamares-wiamox](https://github.com/wiamoxxx/calamares-wiamox) |
 | `ai-center/` | `ai-center`: WiamOX AI Center (local AI launcher: llama.cpp via Podman, ComfyUI, ACE-Step, OpenCode) | git submodule → [wiamoxxx/ai-center](https://github.com/wiamoxxx/ai-center) |
+| `wiamox-opencode/` | `wiamox-opencode` (provides `opencode`): the OpenCode coding agent, offline build | the upstream prebuilt binary from the npm registry, pinned by sha256, downloaded at build time |
 | `woxed/` | `woxed`: the WiamOX Editor | git submodule → [wiamoxxx/woxed](https://github.com/wiamoxxx/woxed) |
 | `aur/calamares/` | `calamares`: the installer program | the AUR, cloned on first build (not part of this repo) |
 | `coreutils/` | `coreutils`: the basic commands (`ls`, `cp`, ...) | a coreutils source tree **on your disk** (with your own edits) |
@@ -158,6 +159,25 @@ To put it on the ISO, `ai-center` must be listed in woxclean1's
 `packages.x86_64`. Newer version: change it in its own repo, bump
 `pkgver`/`pkgrel`, then `git submodule update --remote ai-center`, commit,
 build.
+
+## Building wiamox-opencode
+
+```bash
+scripts/build.sh wiamox-opencode
+```
+
+Repackages OpenCode's own prebuilt binary (npm package
+`opencode-linux-x64`, checked against a sha256 in the PKGBUILD). Needs
+internet **at build time only**; the installed package never does: a wrapper
+(`/usr/bin/opencode`) turns off update checks, the model-catalogue fetch,
+LSP downloads and default plugins, and `git` + `ripgrep` come from Arch.
+`ai-center` depends on `opencode`, so this must be in woxKitchen and listed
+in woxclean1's `packages.x86_64` before `ai-center` can be installed.
+Packs both the normal x64 binary and the `-baseline` one (CPUs without AVX2);
+the wrapper picks by `avx2` in `/proc/cpuinfo`. Language servers (pyright,
+typescript-language-server, gopls, rust-analyzer) are optdepends: OpenCode
+never downloads them and works without them (no diagnostics after edits).
+New version: change `pkgver`, run `updpkgsums` in `wiamox-opencode/`, build.
 
 ## Building woxed
 
