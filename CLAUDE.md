@@ -27,7 +27,7 @@ something important. User-facing details are in README.md.
 | `calamares-wiamox` | `calamares-wiamox/` | git submodule (wiamoxxx/calamares-wiamox) | config-only, `--nodeps` |
 | `woxed` | `woxed/` | git submodule (wiamoxxx/woxed) | needs internet at build time; `WOXED_JOBS` for parser compile |
 | `ai-center` | `ai-center/` | git submodule (wiamoxxx/ai-center) | PKGBUILD lives in that repo; launcher + ComfyUI build files, optional image bundles from `WIAMOX_AI_CENTER_IMAGES` (GBs), `arch=any`, `--nodeps` (no makedepends); project memory in its CLAUDE.md |
-| `wiamox-opencode` | `wiamox-opencode/` | npm tarball `opencode-linux-x64` (upstream prebuilt Bun binary), sha256-pinned | `provides=(opencode)`; `!strip` (strip corrupts the binary); wrapper sets offline env; `ai-center` depends on it; no makedepends → `--nodeps`; AVX2 CPU |
+| `wiamox-opencode` | `wiamox-opencode/` | npm tarball `opencode-linux-x64` (upstream prebuilt Bun binary), sha256-pinned | `provides=(opencode)`; `!strip` (strip corrupts the binary); wrapper sets offline env; `ai-center` depends on it; no makedepends → `--nodeps`; packs x64 + x64-baseline, wrapper picks by avx2; LSPs = optdepends only |
 | `calamares` | `aur/calamares/` (gitignored) | the AUR, cloned/updated by build.sh | links libpython → rebuild after every Python update (`--force`) |
 | `coreutils` | `coreutils/` | coreutils tree on disk (`WIAMOX_COREUTILS_SRC`) | release tarball or git clone + gnulib; Arch's configure flags |
 

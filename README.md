@@ -173,7 +173,10 @@ internet **at build time only**; the installed package never does: a wrapper
 LSP downloads and default plugins, and `git` + `ripgrep` come from Arch.
 `ai-center` depends on `opencode`, so this must be in woxKitchen and listed
 in woxclean1's `packages.x86_64` before `ai-center` can be installed.
-Needs a CPU with AVX2 (the `-baseline` npm package is the fallback).
+Packs both the normal x64 binary and the `-baseline` one (CPUs without AVX2);
+the wrapper picks by `avx2` in `/proc/cpuinfo`. Language servers (pyright,
+typescript-language-server, gopls, rust-analyzer) are optdepends: OpenCode
+never downloads them and works without them (no diagnostics after edits).
 New version: change `pkgver`, run `updpkgsums` in `wiamox-opencode/`, build.
 
 ## Building woxed

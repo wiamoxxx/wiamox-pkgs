@@ -9,8 +9,9 @@
 # To bump: change pkgver, then `updpkgsums`. The binary must NOT be stripped
 # (it is a compiled Bun bundle; strip corrupts it), hence options=(!strip).
 #
-# Needs a CPU with AVX2. For older CPUs use the opencode-linux-x64-baseline
-# npm package instead (same layout).
+# Two binaries are packed: opencode-linux-x64 (needs AVX2) and
+# opencode-linux-x64-baseline (any x86-64 CPU, a bit slower). The wrapper
+# picks one by looking for avx2 in /proc/cpuinfo.
 
 pkgname=wiamox-opencode
 pkgver=1.18.35
@@ -22,18 +23,38 @@ license=(MIT)
 depends=(glibc git ripgrep)
 provides=(opencode)
 conflicts=(opencode)
+optdepends=(
+  'pyright: Python diagnostics (LSP)'
+  'typescript-language-server: TypeScript/JavaScript diagnostics (LSP)'
+  'gopls: Go diagnostics (LSP)'
+  'rust-analyzer: Rust diagnostics (LSP)'
+)
 options=(!strip !debug)
-source=("opencode-linux-x64-$pkgver.tgz::https://registry.npmjs.org/opencode-linux-x64/-/opencode-linux-x64-$pkgver.tgz")
-sha256sums=('e5c8997d5d0024d9686a849f20d462766d83646e74d9751dfb172715f2216133')
+# Both tarballs unpack to package/, so makepkg is told not to extract them
+# and package() unpacks each into its own folder.
+noextract=("opencode-linux-x64-$pkgver.tgz" "opencode-linux-x64-baseline-$pkgver.tgz")
+source=("opencode-linux-x64-$pkgver.tgz::https://registry.npmjs.org/opencode-linux-x64/-/opencode-linux-x64-$pkgver.tgz"
+        "opencode-linux-x64-baseline-$pkgver.tgz::https://registry.npmjs.org/opencode-linux-x64-baseline/-/opencode-linux-x64-baseline-$pkgver.tgz")
+sha256sums=('e5c8997d5d0024d9686a849f20d462766d83646e74d9751dfb172715f2216133'
+            '01584b673166de064eb637904eb370fd8861ef51f7fe0f9bbe8c5bd5783a2265')
 
 package() {
-  install -Dm755 "$srcdir/package/bin/opencode" \
+  local v dir
+  for v in x64 x64-baseline; do
+    dir="$srcdir/unpack-$v"
+    mkdir -p "$dir"
+    bsdtar -xf "$srcdir/opencode-linux-$v-$pkgver.tgz" -C "$dir"
+  done
+  install -Dm755 "$srcdir/unpack-x64/package/bin/opencode" \
     "$pkgdir/usr/lib/wiamox-opencode/opencode"
+  install -Dm755 "$srcdir/unpack-x64-baseline/package/bin/opencode" \
+    "$pkgdir/usr/lib/wiamox-opencode/opencode-baseline"
 
   # Wrapper: same offline defaults as the AI Center launcher sets, so a
   # plain `opencode` in any terminal behaves the same. Override by exporting
   # the variable yourself. ripgrep comes from the system (dependency), so
-  # OpenCode never downloads its own.
+  # OpenCode never downloads its own. Language servers are only used if they
+  # are installed (see optdepends); OpenCode never downloads them.
   install -d "$pkgdir/usr/bin"
   cat > "$pkgdir/usr/bin/opencode" <<'WRAP'
 #!/bin/sh
@@ -41,7 +62,9 @@ export OPENCODE_DISABLE_AUTOUPDATE="${OPENCODE_DISABLE_AUTOUPDATE:-1}"
 export OPENCODE_DISABLE_MODELS_FETCH="${OPENCODE_DISABLE_MODELS_FETCH:-1}"
 export OPENCODE_DISABLE_LSP_DOWNLOAD="${OPENCODE_DISABLE_LSP_DOWNLOAD:-1}"
 export OPENCODE_DISABLE_DEFAULT_PLUGINS="${OPENCODE_DISABLE_DEFAULT_PLUGINS:-1}"
-exec /usr/lib/wiamox-opencode/opencode "$@"
+bin=/usr/lib/wiamox-opencode/opencode
+grep -qw avx2 /proc/cpuinfo 2>/dev/null || bin=$bin-baseline
+exec "$bin" "$@"
 WRAP
   chmod 755 "$pkgdir/usr/bin/opencode"
 }
