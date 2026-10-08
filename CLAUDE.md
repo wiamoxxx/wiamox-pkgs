@@ -27,6 +27,7 @@ something important. User-facing details are in README.md.
 | `calamares-wiamox` | `calamares-wiamox/` | git submodule (wiamoxxx/calamares-wiamox) | config-only, `--nodeps` |
 | `woxed` | `woxed/` | git submodule (wiamoxxx/woxed) | needs internet at build time; `WOXED_JOBS` for parser compile |
 | `ai-center` | `ai-center/` | git submodule (wiamoxxx/ai-center) | PKGBUILD lives in that repo; launcher + ComfyUI build files, optional image bundles from `WIAMOX_AI_CENTER_IMAGES` (GBs), `arch=any`, `--nodeps` (no makedepends); project memory in its CLAUDE.md |
+| `wiamox-opencode` | `wiamox-opencode/` | npm tarball `opencode-linux-x64` (upstream prebuilt Bun binary), sha256-pinned | `provides=(opencode)`; `!strip` (strip corrupts the binary); wrapper sets offline env; `ai-center` depends on it; no makedepends → `--nodeps`; AVX2 CPU |
 | `calamares` | `aur/calamares/` (gitignored) | the AUR, cloned/updated by build.sh | links libpython → rebuild after every Python update (`--force`) |
 | `coreutils` | `coreutils/` | coreutils tree on disk (`WIAMOX_COREUTILS_SRC`) | release tarball or git clone + gnulib; Arch's configure flags |
 
@@ -107,6 +108,8 @@ something important. User-facing details are in README.md.
   `7.x.y-1`, `uname -r` ending in `-wiamox`).
 - woxKitchen is not reachable from installed systems → no updates for own
   packages after install until `publish.sh` is used (needs a public repo).
+
+- 08.10.2026: added `wiamox-opencode` 1.18.35 (recipe lives here, not in ai-center). `ai-center` 0.4.0 depends on `opencode`, so build it first and list it in woxclean1 `packages.x86_64`. `makepkg` not run yet; the binary itself was run offline against a fake OpenAI server in Claude's environment.
 
 ## 7. Related repos
 

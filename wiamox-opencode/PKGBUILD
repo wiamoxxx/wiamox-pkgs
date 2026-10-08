@@ -1,0 +1,47 @@
+# Maintainer: Wiam Khader
+#
+# OpenCode for WiamOX, repackaged from the upstream prebuilt binary
+# (npm package opencode-linux-x64, a self-contained Bun executable) so the
+# installed system never needs the internet: no first-start downloads, no
+# update checks. The npm tarball is fetched at BUILD time only and pinned by
+# sha256. Build: makepkg -s in this directory (or via wiamox-pkgs).
+#
+# To bump: change pkgver, then `updpkgsums`. The binary must NOT be stripped
+# (it is a compiled Bun bundle; strip corrupts it), hence options=(!strip).
+#
+# Needs a CPU with AVX2. For older CPUs use the opencode-linux-x64-baseline
+# npm package instead (same layout).
+
+pkgname=wiamox-opencode
+pkgver=1.18.35
+pkgrel=1
+pkgdesc='OpenCode terminal coding agent, offline build for WiamOX AI Center'
+arch=(x86_64)
+url='https://opencode.ai'
+license=(MIT)
+depends=(glibc git ripgrep)
+provides=(opencode)
+conflicts=(opencode)
+options=(!strip !debug)
+source=("opencode-linux-x64-$pkgver.tgz::https://registry.npmjs.org/opencode-linux-x64/-/opencode-linux-x64-$pkgver.tgz")
+sha256sums=('e5c8997d5d0024d9686a849f20d462766d83646e74d9751dfb172715f2216133')
+
+package() {
+  install -Dm755 "$srcdir/package/bin/opencode" \
+    "$pkgdir/usr/lib/wiamox-opencode/opencode"
+
+  # Wrapper: same offline defaults as the AI Center launcher sets, so a
+  # plain `opencode` in any terminal behaves the same. Override by exporting
+  # the variable yourself. ripgrep comes from the system (dependency), so
+  # OpenCode never downloads its own.
+  install -d "$pkgdir/usr/bin"
+  cat > "$pkgdir/usr/bin/opencode" <<'WRAP'
+#!/bin/sh
+export OPENCODE_DISABLE_AUTOUPDATE="${OPENCODE_DISABLE_AUTOUPDATE:-1}"
+export OPENCODE_DISABLE_MODELS_FETCH="${OPENCODE_DISABLE_MODELS_FETCH:-1}"
+export OPENCODE_DISABLE_LSP_DOWNLOAD="${OPENCODE_DISABLE_LSP_DOWNLOAD:-1}"
+export OPENCODE_DISABLE_DEFAULT_PLUGINS="${OPENCODE_DISABLE_DEFAULT_PLUGINS:-1}"
+exec /usr/lib/wiamox-opencode/opencode "$@"
+WRAP
+  chmod 755 "$pkgdir/usr/bin/opencode"
+}
