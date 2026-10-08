@@ -59,6 +59,7 @@ something important. User-facing details are in README.md.
   → library check → copy to woxKitchen + `repo-add -R` → optional install.
   `PKGDEST=out/`, `LOGDEST=build/logs/`, `SRCDEST=build/sources/`
   (keeps submodules clean).
+- `update-submodules.sh [--dry-run] [--commit] [name...]`: moves every submodule from `.gitmodules` (or the named ones) to the tip of its branch, shows new commits + PKGBUILD version, stages (or commits) the pins; skips dirty submodules; never pushes. Use it instead of `git submodule update --remote` one by one.
 - `publish.sh [--dry-run]`: upload current woxKitchen packages + a fresh
   `woxkitchen` database to the GitHub release, verify downloads.
 
@@ -93,7 +94,7 @@ something important. User-facing details are in README.md.
 
 ## 6. Status (keep updated)
 
-- 04.10.2026: `ai-center` 0.3.0 (submodule pinned to `9513a89`, merged `main` of wiamoxxx/ai-center: ComfyUI image fixes (node submodules, pyproject deps, import disk-space check, `--extra-arg`) on top of the 0.3.0 look with themes, logo, status borders; 0.2.0 added ComfyUI as a Podman container, `containers/` + optional image bundles in the package). `build.sh` passes `WIAMOX_AI_CENTER_IMAGES` to the PKGBUILD as `AI_CENTER_IMAGES`; `check_libs` skips the bundles. `makepkg` not run yet; no bundle built yet. Newer: `git submodule update --remote ai-center`.
+- 04.10.2026: `ai-center` 0.3.0 (then pinned to `9513a89`, merged `main` of wiamoxxx/ai-center: ComfyUI image fixes (node submodules, pyproject deps, import disk-space check, `--extra-arg`) on top of the 0.3.0 look with themes, logo, status borders; 0.2.0 added ComfyUI as a Podman container, `containers/` + optional image bundles in the package). `build.sh` passes `WIAMOX_AI_CENTER_IMAGES` to the PKGBUILD as `AI_CENTER_IMAGES`; `check_libs` skips the bundles. `makepkg` not run yet; no bundle built yet. Newer: `git submodule update --remote ai-center`.
 - Done (PRs #1–#5, 30.09.–01.10.2026): woxed + calamares + coreutils in
   build.sh, clean env, library check, one-database guard, coreutils from a
   source tree.
@@ -109,6 +110,7 @@ something important. User-facing details are in README.md.
 - woxKitchen is not reachable from installed systems → no updates for own
   packages after install until `publish.sh` is used (needs a public repo).
 
+- 08.10.2026: `ai-center` submodule pinned to `0938525` (0.4.0-1); added `scripts/update-submodules.sh`. `woxed` and `calamares-wiamox` pins were not moved.
 - 08.10.2026: added `wiamox-opencode` 1.18.35 (recipe lives here, not in ai-center). `ai-center` 0.4.0 depends on `opencode`, so build it first and list it in woxclean1 `packages.x86_64`. `makepkg` not run yet; the binary itself was run offline against a fake OpenAI server in Claude's environment.
 
 ## 7. Related repos

@@ -133,6 +133,20 @@ To try a change before pushing it, edit the files directly in
 uncommitted changes. Commit and push them from inside that folder
 afterwards (it is a normal clone of the calamares-wiamox repo).
 
+## Updating the submodules
+
+```bash
+scripts/update-submodules.sh              # all submodules to the newest commit of their branch
+scripts/update-submodules.sh --dry-run    # only show what would change
+scripts/update-submodules.sh --commit     # ... and commit the new pins (never pushes)
+scripts/update-submodules.sh ai-center    # only this one
+```
+
+Reads `.gitmodules`, so new submodules are included automatically. It shows
+the new commits and the `pkgver`-`pkgrel` of each submodule's PKGBUILD, skips
+a submodule with uncommitted changes, and clones empty ones first. Then build
+the package (`scripts/build.sh <name>`).
+
 ## Building ai-center
 
 ```bash
