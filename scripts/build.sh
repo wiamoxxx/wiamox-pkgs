@@ -136,11 +136,14 @@ if [[ $pkg == linux ]]; then
 
 # --- coreutils checks, same idea: the source is a folder on this machine ----
 elif [[ $pkg == coreutils ]]; then
-  [[ -f $WIAMOX_COREUTILS_SRC/configure.ac && -x $WIAMOX_COREUTILS_SRC/build-aux/git-version-gen ]] ||
+  gvg=$WIAMOX_COREUTILS_SRC/build-aux/git-version-gen
+  [[ -x $gvg ]] || gvg=$WIAMOX_COREUTILS_SRC/gnulib/build-aux/git-version-gen  # fresh clone: before ./bootstrap
+  [[ -f $WIAMOX_COREUTILS_SRC/configure.ac && -x $gvg ]] ||
     die "WIAMOX_COREUTILS_SRC='$WIAMOX_COREUTILS_SRC' is not a coreutils source tree (set it in local.conf)."
   # Same as pkgver() in coreutils/PKGBUILD.
-  src_ver=$(cd "$WIAMOX_COREUTILS_SRC" && build-aux/git-version-gen .tarball-version 2>/dev/null) || src_ver=""
+  src_ver=$(cd "$WIAMOX_COREUTILS_SRC" && "$gvg" .tarball-version 2>/dev/null) || src_ver=""
   src_ver=${src_ver%-dirty}
+  src_ver=${src_ver%-modified}
   [[ $src_ver =~ ^[0-9] ]] ||
     die "Cannot read the coreutils version from $WIAMOX_COREUTILS_SRC. A release tarball
     has .tarball-version; a git clone needs its .git folder and tags (git fetch --tags)."

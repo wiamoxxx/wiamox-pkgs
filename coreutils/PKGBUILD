@@ -23,7 +23,7 @@
 # not update installed systems.
 
 pkgname=coreutils
-pkgver=9.12
+pkgver=9.12.73.9c7cf2
 pkgrel=1
 pkgdesc='The basic file, shell and text manipulation utilities of the GNU operating system (WiamOX build)'
 arch=(x86_64)
@@ -61,20 +61,32 @@ _load_conf() {
     source "$conf"
     [[ -n $src ]] && WIAMOX_COREUTILS_SRC=$src
   fi
-  if [[ ! -f ${WIAMOX_COREUTILS_SRC-}/configure.ac || ! -x ${WIAMOX_COREUTILS_SRC-}/build-aux/git-version-gen ]]; then
+  if [[ ! -f ${WIAMOX_COREUTILS_SRC-}/configure.ac ]] || [[ -z $(_gvg "${WIAMOX_COREUTILS_SRC-}") ]]; then
     error "WIAMOX_COREUTILS_SRC must point to a coreutils source tree (the folder with configure.ac)."
     plain "Currently: '${WIAMOX_COREUTILS_SRC-}'. Set it in local.conf or the environment."
     return 1
   fi
 }
 
+# A fresh git clone has no build-aux/git-version-gen until ./bootstrap has
+# run; gnulib's copy is the same script.
+_gvg() {
+  local f
+  for f in "$1/build-aux/git-version-gen" "$1/gnulib/build-aux/git-version-gen"; do
+    [[ -x $f ]] && { printf '%s\n' "$f"; return 0; }
+  done
+}
+
 # The version as coreutils itself reports it: 9.12 for a release tarball,
-# e.g. 9.12.15-a1b2c for a clone 15 commits after v9.12. "-dirty"
-# (uncommitted edits) is dropped; pkgrel covers that.
+# e.g. 9.12.15-a1b2c for a clone 15 commits after v9.12. "-dirty" /
+# "-modified" (uncommitted edits) is dropped; pkgrel covers that.
 _version_raw() {
-  local v
-  v=$(cd "$1" && build-aux/git-version-gen .tarball-version 2>/dev/null) || return 1
+  local v gvg
+  gvg=$(_gvg "$1")
+  [[ -n $gvg ]] || return 1
+  v=$(cd "$1" && "$gvg" .tarball-version 2>/dev/null) || return 1
   v=${v%-dirty}
+  v=${v%-modified}
   [[ $v =~ ^[0-9] ]] || return 1
   printf '%s\n' "$v"
 }
@@ -117,7 +129,7 @@ prepare() {
       return 1
     fi
     echo "Running ./bootstrap (no network, no translations) ..."
-    SKIP_PO=1 GNULIB_TOOL_IMPL=sh ./bootstrap --skip-po --no-git --gnulib-srcdir=gnulib
+    SKIP_PO=1 GNULIB_TOOL_IMPL=py ./bootstrap --skip-po --no-git --gnulib-srcdir=gnulib
   fi
   echo "Prepared $pkgname $version"
 }
