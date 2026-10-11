@@ -23,7 +23,7 @@
 # not update installed systems.
 
 pkgname=coreutils
-pkgver=9.12.73.9c7cf2
+pkgver=9.12.74.2401f
 pkgrel=1
 pkgdesc='The basic file, shell and text manipulation utilities of the GNU operating system (WiamOX build)'
 arch=(x86_64)
