@@ -15,7 +15,7 @@
 
 pkgname=wiamox-opencode
 pkgver=1.18.35
-pkgrel=1
+pkgrel=2
 pkgdesc='OpenCode terminal coding agent, offline build for WiamOX AI Center'
 arch=(x86_64)
 url='https://opencode.ai'
@@ -62,6 +62,13 @@ export OPENCODE_DISABLE_AUTOUPDATE="${OPENCODE_DISABLE_AUTOUPDATE:-1}"
 export OPENCODE_DISABLE_MODELS_FETCH="${OPENCODE_DISABLE_MODELS_FETCH:-1}"
 export OPENCODE_DISABLE_LSP_DOWNLOAD="${OPENCODE_DISABLE_LSP_DOWNLOAD:-1}"
 export OPENCODE_DISABLE_DEFAULT_PLUGINS="${OPENCODE_DISABLE_DEFAULT_PLUGINS:-1}"
+# AI Center writes this file whenever it starts llama-server (model name,
+# context, API key), so a plain `opencode` (dock, any terminal) talks to the
+# loaded local model. Set OPENCODE_CONFIG yourself to use another config.
+aihub_cfg="${AIHUB_ROOT:-$HOME/aihub}/config/opencode.json"
+if [ -z "${OPENCODE_CONFIG:-}" ] && [ -f "$aihub_cfg" ]; then
+  export OPENCODE_CONFIG="$aihub_cfg"
+fi
 bin=/usr/lib/wiamox-opencode/opencode
 grep -qw avx2 /proc/cpuinfo 2>/dev/null || bin=$bin-baseline
 exec "$bin" "$@"
