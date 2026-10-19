@@ -1,0 +1,24 @@
+# Maintainer: Wiam Khader
+#
+# wox: WiamOX terminal helper. `wox why` (alias `why`) explains the last
+# failed command with the local llama.cpp model. Plain Python (stdlib), the
+# sources live next to this file. The shell hooks are sourced from the
+# skeleton .zshrc / .bashrc (woxclean1), before starship.
+
+pkgname=wiamox-wox
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='wox: explain failed terminal commands with the local AI (WiamOX)'
+arch=(any)
+url='https://github.com/wiamoxxx'
+license=(MIT)
+depends=(python)
+optdepends=('ai-center: starts the local llama.cpp model that wox why asks')
+source=(wox hook.zsh hook.bash)
+sha256sums=('SKIP' 'SKIP' 'SKIP')
+
+package() {
+  install -Dm755 wox "$pkgdir/usr/bin/wox"
+  install -Dm644 hook.zsh  "$pkgdir/usr/share/wiamox-wox/hook.zsh"
+  install -Dm644 hook.bash "$pkgdir/usr/share/wiamox-wox/hook.bash"
+}

@@ -116,6 +116,8 @@ something important. User-facing details are in README.md.
 
 - 19.10.2026: added `wiamox-yue2.cpp-cuda` 20261016 (YuE2 song generation, backs the AI Music card). Pinned by commit (`yue2.cpp` + `ggml` commit, ggml submodule initialised in prepare() from the local clone and hash-checked). `provides/conflicts=(yue2.cpp)`, binaries `yue-server yue-synth yue-plan` in `/usr/lib/wiamox-yue2.cpp` (RUNPATH), CUDA archs `75-virtual;80-virtual;86-real;89-real;120a-real`. Built into woxKitchen. Listed in the Calamares "AI" bundle (`calamares-wiamox` netinstall.conf), not in the ISO live packages. `ai-center` 0.6.x optdepends on it. GGUFs are not packaged (user provides them in `~/aihub/models/yue2`); first real run with real GGUFs still pending.
 
+- 19.10.2026: added `wiamox-wox` 0.1.0 (local sources in `wiamox-wox/`: `wox` Python stdlib, `hook.zsh`, `hook.bash`). `wox why` (alias `why`, `wox diagnose`) asks llama-server (127.0.0.1:8080, `WOX_LLAMA_URL`) to explain the last failed command. The hooks are sourced from the skel `.zshrc`/`.bashrc` (woxclean1) **before starship** and keep failed commands only (no output) in `$XDG_RUNTIME_DIR/wox/<shellpid>.log`: max 8 entries, max 1 h, removed at shell exit, dead shells swept at start. Output is obtained by re-running the command (asks first), paste, tmux screen, or `cmd 2>&1 | wox why`; capturing stderr live was rejected (breaks isatty/colours). Tested with a fake llama-server through a pty in zsh and bash. Version 1 = one answer, no chat; `--screen` (vision) planned.
+
 ## 7. Related repos
 
 - `wiamoxxx/woxclean1` — the archiso profile (ISO). `pacman.conf` with

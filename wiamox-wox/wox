@@ -1,0 +1,275 @@
+#!/usr/bin/python
+"""wox - WiamOX terminal helper.  `wox why`: explain the last failed command
+with the local model (llama-server, started from the AI Center)."""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+
+URL = os.environ.get("WOX_LLAMA_URL", "http://127.0.0.1:8080").rstrip("/")
+MAX_CHARS = 6000
+RERUN_TIMEOUT = 30
+
+SYSTEM = (
+    "You are the terminal assistant of WiamOX, an Arch Linux based distro "
+    "(pacman, systemd, niri/zsh). The user ran a command and it failed. "
+    "Explain briefly and concretely WHY it failed, then give numbered fix "
+    "steps with the exact commands in code blocks. Prefer pacman over other "
+    "package managers; mention sudo only when really needed. If the output "
+    "is not enough to be sure, say what to check next. No long introductions. "
+    "Reply in the language of this locale: {lang}."
+)
+
+REDACT = [
+    (re.compile(r"(?i)\b([A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD)[A-Z0-9_]*)=\S+"), r"\1=<redacted>"),
+    (re.compile(r"(?i)(authorization:\s*bearer\s+)\S+"), r"\1<redacted>"),
+    (re.compile(r"(://[^/\s:@]+:)[^@\s/]+@"), r"\1<redacted>@"),
+    (re.compile(r"\b(?:sk|ghp|gho|github_pat|hf|xox[bap])[-_][A-Za-z0-9_\-]{16,}"), "<redacted>"),
+    (re.compile(r"(?i)(--(?:password|token|api-key)[= ])\S+"), r"\1<redacted>"),
+]
+
+
+def redact(text):
+    for rx, rep in REDACT:
+        text = rx.sub(rep, text)
+    return text
+
+
+def state_dir():
+    return os.path.join(os.environ.get("XDG_RUNTIME_DIR") or f"/tmp/wox-{os.getuid()}", "wox")
+
+
+def read_failures(session):
+    """(entries newest first, current seq) from the hook's files."""
+    if not session:
+        return [], 0
+    d = state_dir()
+    try:
+        seq = int(open(os.path.join(d, f"{session}.seq")).read().strip() or 0)
+    except (OSError, ValueError):
+        seq = 0
+    out = []
+    try:
+        for line in open(os.path.join(d, f"{session}.log"), encoding="utf-8", errors="replace"):
+            p = line.rstrip("\n").split("\t", 4)
+            if len(p) == 5 and p[0].isdigit() and p[1].lstrip("-").isdigit() and p[2].isdigit():
+                out.append({"t": int(p[0]), "rc": int(p[1]), "seq": int(p[2]), "cwd": p[3], "cmd": p[4]})
+    except OSError:
+        pass
+    out = [e for e in out if time.time() - e["t"] < 3600]
+    return sorted(out, key=lambda e: -e["seq"]), seq
+
+
+def server_state():
+    """'ok' | 'loading' | 'down'"""
+    try:
+        with urllib.request.urlopen(URL + "/health", timeout=2) as r:
+            return "ok" if r.status == 200 else "loading"
+    except urllib.error.HTTPError as e:
+        return "loading" if e.code == 503 else "down"
+    except Exception:
+        return "down"
+
+
+def ask(prompt, default=""):
+    try:
+        return input(prompt).strip().lower() or default
+    except EOFError:
+        return "q"
+
+
+def ago(t):
+    s = int(time.time() - t)
+    return f"{s}s ago" if s < 90 else f"{s // 60} min ago"
+
+
+def tail(text):
+    lines = text.strip().splitlines()[-120:]
+    text = "\n".join(lines)
+    return text[-MAX_CHARS:]
+
+
+def paste_mode():
+    print("Paste the error text, then press Ctrl-D on an empty line:")
+    try:
+        data = sys.stdin.read()
+    except KeyboardInterrupt:
+        return ""
+    return data
+
+
+def rerun(entry):
+    cwd = entry["cwd"] if os.path.isdir(entry["cwd"]) else None
+    shell = os.environ.get("SHELL") or "/bin/sh"
+    print(f"Running again (max {RERUN_TIMEOUT}s, no input)...")
+    try:
+        r = subprocess.run([shell, "-c", entry["cmd"]], cwd=cwd, stdin=subprocess.DEVNULL,
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=RERUN_TIMEOUT)
+        return r.stdout.decode("utf-8", "replace")
+    except subprocess.TimeoutExpired as e:
+        return (e.stdout or b"").decode("utf-8", "replace") + "\n[timed out]"
+    except OSError as e:
+        return f"[could not run: {e}]"
+
+
+def tmux_screen():
+    if not os.environ.get("TMUX") or not shutil.which("tmux"):
+        return ""
+    r = subprocess.run(["tmux", "capture-pane", "-p", "-S", "-200"], capture_output=True, text=True)
+    return r.stdout
+
+
+def choose_entry(entries, seq):
+    """Returns an entry dict, None for 'paste', or False to quit."""
+    if not entries:
+        print("No failed command recorded in this terminal in the last hour.")
+        return None if ask("Paste an error instead? [Y/n] ", "y") == "y" else False
+    latest = entries[0]
+    if latest["seq"] == seq:
+        print(f"Last command failed (exit {latest['rc']}):  {latest['cmd']}")
+        return latest
+    print("Recent failed commands in this terminal:")
+    shown = entries[:5]
+    for i, e in enumerate(shown, 1):
+        print(f"  {i}) {e['cmd'][:70]}   (exit {e['rc']}, {ago(e['t'])})")
+    print("  p) paste an error text     q) quit")
+    while True:
+        a = ask(f"Which one? [1-{len(shown)}/p/q] ", "1")
+        if a == "q":
+            return False
+        if a == "p":
+            return None
+        if a.isdigit() and 1 <= int(a) <= len(shown):
+            return shown[int(a) - 1]
+
+
+def get_error(entry):
+    """Returns (command, output) or None to abort."""
+    if entry is None:
+        text = paste_mode()
+        return ("(pasted by user)", text) if text.strip() else None
+    opts = "[r] run it again to capture the error   [p] paste the error text"
+    keys = "r/p"
+    if os.environ.get("TMUX"):
+        opts += "   [t] take the tmux screen"
+        keys += "/t"
+    print(opts + "   [q] quit")
+    while True:
+        a = ask(f"How should I get the error text? [{keys}/q] ", "r")
+        if a == "q":
+            return None
+        if a == "r":
+            return entry["cmd"], rerun(entry)
+        if a == "p":
+            text = paste_mode()
+            return (entry["cmd"], text) if text.strip() else None
+        if a == "t" and "t" in keys:
+            return entry["cmd"], tmux_screen()
+
+
+def explain(cmd, output, rc=None):
+    lang = os.environ.get("LC_MESSAGES") or os.environ.get("LANG") or "en_US.UTF-8"
+    user = f"Command: {cmd}\n"
+    if rc is not None:
+        user += f"Exit code: {rc}\n"
+    user += f"Directory: {os.getcwd()}\n\nOutput:\n```\n{redact(tail(output))}\n```\n\nPlease explain this error to me and what the fixing suggestions are."
+    body = {"messages": [{"role": "system", "content": SYSTEM.format(lang=lang)},
+                         {"role": "user", "content": user}],
+            "stream": True, "temperature": 0.3, "max_tokens": 1500}
+    req = urllib.request.Request(URL + "/v1/chat/completions", json.dumps(body).encode(),
+                                 {"Content-Type": "application/json"})
+    print("\n\033[2mThinking...\033[0m", end="", flush=True)
+    started = False
+    try:
+        with urllib.request.urlopen(req, timeout=300) as r:
+            for raw in r:
+                line = raw.decode("utf-8", "replace").strip()
+                if not line.startswith("data:"):
+                    continue
+                data = line[5:].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    delta = json.loads(data)["choices"][0]["delta"].get("content") or ""
+                except (ValueError, KeyError, IndexError):
+                    continue
+                if delta and not started:
+                    started = True
+                    print("\r\033[K", end="")
+                print(delta, end="", flush=True)
+    except KeyboardInterrupt:
+        print("\n(stopped)")
+        return 130
+    except (urllib.error.URLError, OSError) as e:
+        print(f"\r\033[K\nThe model server did not answer: {e}")
+        return 1
+    print("\r\033[K" if not started else "")
+    return 0
+
+
+def cmd_why(args):
+    paste = "-p" in args or "--paste" in args
+    state = server_state()
+    if state == "down":
+        print("The local AI is not running. Start the AI Center first:\n"
+              "  wiamox-ai-center   ->  llama.cpp  ->  pick a model  ->  Start server")
+        return 1
+    if state == "loading":
+        print("The AI server is still loading the model. Try again in a few seconds.")
+        return 1
+
+    if not sys.stdin.isatty():          # command 2>&1 | wox why
+        text = sys.stdin.read()
+        if not text.strip():
+            print("Nothing on stdin.")
+            return 1
+        return explain("(piped output)", text)
+
+    if paste:
+        got = get_error(None)
+        entry = None
+    else:
+        entries, seq = read_failures(os.environ.get("WOX_SESSION"))
+        entry = choose_entry(entries, seq)
+        if entry is False:
+            return 0
+        got = get_error(entry)
+    if not got:
+        return 0
+    cmd, out = got
+    if not out.strip():
+        print("There was no output to explain (the command may have failed silently).")
+        return 1
+    return explain(cmd, out, entry["rc"] if entry else None)
+
+
+HELP = """wox - WiamOX terminal helper
+
+  wox why            explain the last failed command (alias: why, wox diagnose)
+  wox why -p         paste an error text instead
+  some-cmd 2>&1 | wox why     explain piped output
+
+Needs the local AI: start the AI Center and the llama.cpp server first."""
+
+
+def main(argv):
+    if len(argv) < 2 or argv[1] in ("-h", "--help", "help"):
+        print(HELP)
+        return 0
+    if argv[1] in ("why", "diagnose"):
+        return cmd_why(argv[2:])
+    print(f"wox: unknown command '{argv[1]}'\n\n{HELP}")
+    return 2
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv))
+    except KeyboardInterrupt:
+        print()
+        sys.exit(130)
