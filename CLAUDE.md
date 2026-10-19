@@ -28,6 +28,7 @@ something important. User-facing details are in README.md.
 | `woxed` | `woxed/` | git submodule (wiamoxxx/woxed) | needs internet at build time; `WOXED_JOBS` for parser compile |
 | `ai-center` | `ai-center/` | git submodule (wiamoxxx/ai-center) | PKGBUILD lives in that repo; launcher + ComfyUI build files, optional image bundles from `WIAMOX_AI_CENTER_IMAGES` (GBs), `arch=any`, `--nodeps` (no makedepends); project memory in its CLAUDE.md |
 | `wiamox-opencode` | `wiamox-opencode/` | npm tarball `opencode-linux-x64` (upstream prebuilt Bun binary), sha256-pinned | `provides=(opencode)`; `!strip` (strip corrupts the binary); wrapper sets offline env; `ai-center` depends on it; no makedepends → `--nodeps`; packs x64 + x64-baseline, wrapper picks by avx2; LSPs = optdepends only |
+| `wiamox-llama.cpp-cuda` | `wiamox-llama.cpp-cuda/` | git source `ggml-org/llama.cpp`, pinned by tag `bNNNN` + commit | `provides/conflicts=(llama.cpp)`; one package per GPU variant (ROCm later = `wiamox-llama.cpp-rocm/`); `/usr/bin/llama-server` (+cli, bench, quantize), libs in `/usr/lib/wiamox-llama.cpp` via RPATH; `GGML_NATIVE=OFF`, no curl; `ai-center` depends on `llama.cpp`; has makedepends → `--syncdeps` (cuda, cmake) |
 | `calamares` | `aur/calamares/` (gitignored) | the AUR, cloned/updated by build.sh | links libpython → rebuild after every Python update (`--force`) |
 | `coreutils` | `coreutils/` | coreutils tree on disk (`WIAMOX_COREUTILS_SRC`) | release tarball or git clone + gnulib; Arch's configure flags |
 
@@ -110,6 +111,8 @@ something important. User-facing details are in README.md.
   packages after install until `publish.sh` is used (needs a public repo).
 
 - 08.10.2026: added `wiamox-opencode` 1.18.35 (recipe lives here, not in ai-center). `ai-center` 0.4.0 depends on `opencode`, so build it first and list it in woxclean1 `packages.x86_64`. `makepkg` not run yet; the binary itself was run offline against a fake OpenAI server in Claude's environment.
+
+- 19.10.2026: added `wiamox-llama.cpp-cuda` b11722 (AI Center no longer uses a llama.cpp container; `ai-center` 0.5.1 depends on `llama.cpp`). **Never built**: `makepkg` is not available in Claude's environment, so the cmake flags, CUDA host compiler path (`/opt/cuda/bin/g++`), arch list and the `build/bin/*.so` copy are unverified. List it in woxclean1 `packages.x86_64`; `ai-center` submodule needs `git submodule update --remote ai-center` (0.5.x).
 
 ## 7. Related repos
 

@@ -1,0 +1,78 @@
+# Maintainer: Wiam Khader
+#
+# llama.cpp for WiamOX, CUDA (NVIDIA) variant. AI Center runs /usr/bin/llama-server.
+#
+# One package per GPU backend, all providing llama.cpp and conflicting with
+# each other (only one can own /usr/bin/llama-server). A ROCm variant later
+# is a copy of this folder as wiamox-llama.cpp-rocm with the cmake flags
+# swapped (-DGGML_HIP=ON -DAMDGPU_TARGETS=...) and `rocm-hip-sdk` in depends.
+#
+# The source is pinned by commit (tag bNNNN); fetched at BUILD time only.
+# To bump: set _tag and _commit (git ls-remote --tags https://github.com/ggml-org/llama.cpp),
+# pkgrel=1. Built with a portable CPU baseline (GGML_NATIVE=OFF, runtime CPU
+# feature dispatch) so the package runs on any x86-64 machine, not only the
+# build machine. No libcurl: models are local GGUF files, nothing downloads.
+#
+# Libraries live in /usr/lib/wiamox-llama.cpp (RPATH), so they cannot clash
+# with Arch's ggml/llama.cpp packages.
+
+pkgname=wiamox-llama.cpp-cuda
+_tag=b11722
+_commit=fe8841a78ad36454a348cf612e10aaf40af12fec
+pkgver=${_tag#b}
+pkgrel=1
+pkgdesc='llama.cpp inference server (CUDA build) for WiamOX AI Center'
+arch=(x86_64)
+url='https://github.com/ggml-org/llama.cpp'
+license=(MIT)
+depends=(cuda gcc-libs glibc)
+makedepends=(cmake git)
+provides=(llama.cpp)
+conflicts=(llama.cpp)
+options=(!lto)
+source=("llama.cpp::git+https://github.com/ggml-org/llama.cpp.git#commit=$_commit")
+sha256sums=('SKIP')   # git source, pinned by commit above
+
+# CUDA architectures: Turing, Ampere, Ada, Blackwell. Edit to match the
+# GPUs you ship for; fewer = faster build and smaller package.
+_cuda_archs='75;80;86;89;120'
+
+build() {
+  # CUDA's own compiler wrappers pick a gcc that nvcc accepts (Arch's cuda
+  # package provides them in /opt/cuda/bin).
+  export PATH=/opt/cuda/bin:$PATH
+  local host_cc=()
+  [[ -x /opt/cuda/bin/g++ ]] && host_cc=(-DCMAKE_CUDA_HOST_COMPILER=/opt/cuda/bin/g++)
+
+  cmake -S llama.cpp -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_INSTALL_LIBDIR=lib/wiamox-llama.cpp \
+    -DCMAKE_INSTALL_RPATH=/usr/lib/wiamox-llama.cpp \
+    -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+    -DBUILD_SHARED_LIBS=ON \
+    -DGGML_CUDA=ON \
+    -DCMAKE_CUDA_ARCHITECTURES="$_cuda_archs" \
+    -DGGML_NATIVE=OFF \
+    -DGGML_BACKEND_DL=OFF \
+    -DLLAMA_CURL=OFF \
+    -DLLAMA_BUILD_TESTS=OFF \
+    -DLLAMA_BUILD_EXAMPLES=OFF \
+    -DLLAMA_BUILD_SERVER=ON \
+    -DLLAMA_BUILD_TOOLS=ON \
+    "${host_cc[@]}"
+  cmake --build build
+}
+
+package() {
+  # Not `cmake --install`: that would also install headers, cmake files and
+  # pkg-config files into /usr, which Arch's ggml/llama.cpp packages own.
+  local f
+  install -d "$pkgdir/usr/bin" "$pkgdir/usr/lib/wiamox-llama.cpp"
+  for f in llama-server llama-cli llama-bench llama-quantize; do
+    [[ -x build/bin/$f ]] && install -m755 "build/bin/$f" "$pkgdir/usr/bin/$f"
+  done
+  [[ -x $pkgdir/usr/bin/llama-server ]] || { echo "llama-server was not built"; return 1; }
+  cp -a build/bin/*.so* "$pkgdir/usr/lib/wiamox-llama.cpp/"
+  install -Dm644 llama.cpp/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
