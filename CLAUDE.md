@@ -112,7 +112,9 @@ something important. User-facing details are in README.md.
 
 - 08.10.2026: added `wiamox-opencode` 1.18.35 (recipe lives here, not in ai-center). `ai-center` 0.4.0 depends on `opencode`, so build it first and list it in woxclean1 `packages.x86_64`. `makepkg` not run yet; the binary itself was run offline against a fake OpenAI server in Claude's environment.
 
-- 19.10.2026: added `wiamox-llama.cpp-cuda` b11722 (AI Center no longer uses a llama.cpp container; `ai-center` 0.5.1 depends on `llama.cpp`). **Never built**: `makepkg` is not available in Claude's environment, so the cmake flags, CUDA host compiler path (`/opt/cuda/bin/g++`), arch list and the `build/bin/*.so` copy are unverified. List it in woxclean1 `packages.x86_64`; `ai-center` submodule needs `git submodule update --remote ai-center` (0.5.x).
+- 19.10.2026: added `wiamox-llama.cpp-cuda` b11722 (AI Center no longer uses a llama.cpp container; `ai-center` 0.5.1 depends on `llama.cpp`). Built and tested on the build machine (shipped in woxKitchen). List it in woxclean1 `packages.x86_64`; `ai-center` submodule needs `git submodule update --remote ai-center` (0.5.x).
+
+- 19.10.2026: added `wiamox-yue2.cpp-cuda` 20261016 (YuE2 song generation, backs the AI Music card). Pinned by commit (`yue2.cpp` + `ggml` commit, ggml submodule initialised in prepare() from the local clone and hash-checked). `provides/conflicts=(yue2.cpp)`, binaries `yue-server yue-synth yue-plan` in `/usr/lib/wiamox-yue2.cpp` (RUNPATH), CUDA archs `75-virtual;80-virtual;86-real;89-real;120a-real`. Built into woxKitchen. Listed in the Calamares "AI" bundle (`calamares-wiamox` netinstall.conf), not in the ISO live packages. `ai-center` 0.6.x optdepends on it. GGUFs are not packaged (user provides them in `~/aihub/models/yue2`); first real run with real GGUFs still pending.
 
 ## 7. Related repos
 
