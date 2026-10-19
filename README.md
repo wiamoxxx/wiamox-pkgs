@@ -10,6 +10,7 @@ script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 | `calamares-wiamox/` | `calamares-wiamox`: installer branding and config | git submodule → [wiamoxxx/calamares-wiamox](https://github.com/wiamoxxx/calamares-wiamox) |
 | `ai-center/` | `ai-center`: WiamOX AI Center (local AI launcher: llama.cpp via Podman, ComfyUI, ACE-Step, OpenCode) | git submodule → [wiamoxxx/ai-center](https://github.com/wiamoxxx/ai-center) |
 | `wiamox-opencode/` | `wiamox-opencode` (provides `opencode`): the OpenCode coding agent, offline build | the upstream prebuilt binary from the npm registry, pinned by sha256, downloaded at build time |
+| `wiamox-llama.cpp-cuda/` | `wiamox-llama.cpp-cuda` (provides `llama.cpp`): `llama-server` for AI Center, CUDA build | llama.cpp from GitHub, pinned by commit, built at build time |
 | `woxed/` | `woxed`: the WiamOX Editor | git submodule → [wiamoxxx/woxed](https://github.com/wiamoxxx/woxed) |
 | `aur/calamares/` | `calamares`: the installer program | the AUR, cloned on first build (not part of this repo) |
 | `coreutils/` | `coreutils`: the basic commands (`ls`, `cp`, ...) | a coreutils source tree **on your disk** (with your own edits) |
@@ -178,6 +179,24 @@ the wrapper picks by `avx2` in `/proc/cpuinfo`. Language servers (pyright,
 typescript-language-server, gopls, rust-analyzer) are optdepends: OpenCode
 never downloads them and works without them (no diagnostics after edits).
 New version: change `pkgver`, run `updpkgsums` in `wiamox-opencode/`, build.
+
+## Building wiamox-llama.cpp-cuda
+
+```bash
+scripts/build.sh wiamox-llama.cpp-cuda
+```
+
+Builds llama.cpp (tag pinned by commit in the PKGBUILD) with CUDA and
+installs `/usr/bin/llama-server` (plus `llama-cli`, `llama-bench`,
+`llama-quantize`); its libraries go to `/usr/lib/wiamox-llama.cpp`. One
+package per GPU backend, all `provides=(llama.cpp)` / `conflicts=(llama.cpp)`;
+`ai-center` depends on `llama.cpp` and just runs `llama-server` from `$PATH`.
+ROCm later = a second folder `wiamox-llama.cpp-rocm/`. Needs `cuda` and
+`cmake` (installed by `--syncdeps`), internet at build time only. CPU code is
+a portable baseline (no `-march=native`); CUDA architectures are set in
+`_cuda_archs`. New version: change `_tag`/`_commit`, `pkgrel=1`.
+Must be in woxKitchen and in woxclean1's `packages.x86_64` before `ai-center`
+can be installed.
 
 ## Building woxed
 
