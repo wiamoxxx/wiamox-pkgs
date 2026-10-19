@@ -9,7 +9,7 @@
 #
 # The source is pinned by commit (tag bNNNN); fetched at BUILD time only.
 # To bump: set _tag and _commit (git ls-remote --tags https://github.com/ggml-org/llama.cpp),
-# pkgrel=2. Built with a portable CPU baseline (GGML_NATIVE=OFF, runtime CPU
+# pkgrel=1. Built with a portable CPU baseline (GGML_NATIVE=OFF, runtime CPU
 # feature dispatch) so the package runs on any x86-64 machine, not only the
 # build machine. No libcurl: models are local GGUF files, nothing downloads.
 #
