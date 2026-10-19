@@ -9,9 +9,13 @@
 #
 # The source is pinned by commit (tag bNNNN); fetched at BUILD time only.
 # To bump: set _tag and _commit (git ls-remote --tags https://github.com/ggml-org/llama.cpp),
-# pkgrel=1. Built with a portable CPU baseline (GGML_NATIVE=OFF, runtime CPU
+# pkgrel=2. Built with a portable CPU baseline (GGML_NATIVE=OFF, runtime CPU
 # feature dispatch) so the package runs on any x86-64 machine, not only the
 # build machine. No libcurl: models are local GGUF files, nothing downloads.
+#
+# Vision (screenshot debugging later): llama-server serves image input when
+# started with --mmproj <model's mmproj GGUF>; llama-mtmd-cli is the CLI test
+# tool for the same. Both come from libmtmd, built with LLAMA_BUILD_TOOLS.
 #
 # Libraries live in /usr/lib/wiamox-llama.cpp (RPATH), so they cannot clash
 # with Arch's ggml/llama.cpp packages.
@@ -69,7 +73,8 @@ package() {
   # pkg-config files into /usr, which Arch's ggml/llama.cpp packages own.
   local f
   install -d "$pkgdir/usr/bin" "$pkgdir/usr/lib/wiamox-llama.cpp"
-  for f in llama-server llama-cli llama-bench llama-quantize; do
+  for f in llama-server llama-cli llama-bench llama-quantize \
+           llama-gguf-split llama-perplexity llama-mtmd-cli; do
     [[ -x build/bin/$f ]] && install -m755 "build/bin/$f" "$pkgdir/usr/bin/$f"
   done
   [[ -x $pkgdir/usr/bin/llama-server ]] || { echo "llama-server was not built"; return 1; }
