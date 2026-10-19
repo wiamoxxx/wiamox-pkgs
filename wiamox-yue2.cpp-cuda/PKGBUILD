@@ -1,0 +1,78 @@
+# Maintainer: Wiam Khader
+#
+# yue2.cpp for WiamOX, CUDA (NVIDIA) variant: the local AI music generator
+# behind the AI Center "AI Music" card. AI Center runs `yue-server` (browser
+# UI on 127.0.0.1:8087) with GGUF files the user puts in ~/aihub/models/yue2.
+# Weights are NOT part of this package (YuE2 weights are CC BY-NC 4.0).
+#
+# Same scheme as wiamox-llama.cpp-cuda: one package per GPU backend, all
+# providing yue2.cpp and conflicting with each other (a Vulkan variant for
+# AMD/Intel is a copy of this folder with -DGGML_VULKAN=ON instead of CUDA).
+#
+# Sources are pinned by commit and fetched at BUILD time only. yue2.cpp has no
+# release tags, so pkgver is the commit date. It carries its own ggml fork as
+# a git submodule: _ggml_commit must equal the commit the submodule points to
+# (git ls-tree <commit> ggml). To bump: set both commits, pkgver, pkgrel=1.
+# Portable CPU baseline (GGML_NATIVE=OFF). Libraries live in
+# /usr/lib/wiamox-yue2.cpp (RUNPATH), so nothing clashes with llama.cpp's ggml.
+
+pkgname=wiamox-yue2.cpp-cuda
+pkgver=20261016
+_commit=8af01740686824ffd4a1839a457954f42e2a8ce7
+_ggml_commit=cc5df49a6b878db2b68b9a7b45976e279594627d
+pkgrel=1
+pkgdesc='yue2.cpp song generator server (CUDA build) for WiamOX AI Center'
+arch=(x86_64)
+url='https://github.com/ServeurpersoCom/yue2.cpp'
+license=(MIT)
+depends=(cuda gcc-libs glibc)
+makedepends=(cmake git)
+provides=(yue2.cpp)
+conflicts=(yue2.cpp)
+options=(!lto)
+source=("yue2.cpp::git+https://github.com/ServeurpersoCom/yue2.cpp.git#commit=$_commit"
+        "ggml::git+https://github.com/ServeurpersoCom/ggml.git#commit=$_ggml_commit")
+sha256sums=('SKIP' 'SKIP')   # git sources, pinned by commit above
+
+# Turing, Ampere, Ada, Blackwell (virtual = PTX, so newer cards still run).
+_cuda_archs='75-virtual;80-virtual;86-real;89-real;120a-real'
+
+prepare() {
+  cd yue2.cpp
+  # Use the pinned local ggml clone instead of fetching the submodule.
+  git submodule init ggml
+  git config submodule.ggml.url "$srcdir/ggml"
+  git -c protocol.file.allow=always submodule update ggml
+  [[ $(git -C ggml rev-parse HEAD) == "$_ggml_commit" ]] ||
+    { echo "ggml submodule is not at _ggml_commit"; return 1; }
+}
+
+build() {
+  export PATH=/opt/cuda/bin:$PATH
+  local host_cc=()
+  [[ -x /opt/cuda/bin/g++ ]] && host_cc=(-DCMAKE_CUDA_HOST_COMPILER=/opt/cuda/bin/g++)
+
+  cmake -S yue2.cpp -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_RPATH=/usr/lib/wiamox-yue2.cpp \
+    -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+    -DBUILD_SHARED_LIBS=ON \
+    -DGGML_CUDA=ON \
+    -DCMAKE_CUDA_ARCHITECTURES="$_cuda_archs" \
+    -DGGML_NATIVE=OFF \
+    "${host_cc[@]}"
+  # Only the programs we ship (skips the unit tests and the converters).
+  cmake --build build --target yue-server yue-synth yue-plan
+}
+
+package() {
+  # Not `cmake --install`: upstream has no install rules, and ggml's would
+  # put headers and cmake files into /usr.
+  local f
+  install -d "$pkgdir/usr/bin" "$pkgdir/usr/lib/wiamox-yue2.cpp"
+  for f in yue-server yue-synth yue-plan; do
+    install -m755 "build/$f" "$pkgdir/usr/bin/$f"
+  done
+  cp -a build/*.so* "$pkgdir/usr/lib/wiamox-yue2.cpp/"
+  install -Dm644 yue2.cpp/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

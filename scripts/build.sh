@@ -11,6 +11,7 @@
 #   scripts/build.sh ai-center            the WiamOX AI Center launcher (git submodule)
 #   scripts/build.sh wiamox-opencode      OpenCode (offline build of the upstream binary)
 #   scripts/build.sh wiamox-llama.cpp-cuda  llama.cpp / llama-server, CUDA build
+#   scripts/build.sh wiamox-yue2.cpp-cuda   yue2.cpp / yue-server (AI music), CUDA build
 #   scripts/build.sh calamares            the installer program, from the AUR
 #   scripts/build.sh coreutils            coreutils from your source tree
 #   scripts/build.sh <pkg> --no-libcheck  skip the shared-library check
