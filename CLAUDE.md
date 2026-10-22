@@ -26,9 +26,10 @@ something important. User-facing details are in README.md.
 | `linux`, `linux-headers` | `linux/` | kernel tree on disk (`WIAMOX_KERNEL_SRC`) | named `linux` to replace Arch's; config from fragments; ~30 GB to build |
 | `calamares-wiamox` | `calamares-wiamox/` | git submodule (wiamoxxx/calamares-wiamox) | config-only, `--nodeps` |
 | `woxed` | `woxed/` | git submodule (wiamoxxx/woxed) | needs internet at build time; `WOXED_JOBS` for parser compile |
-| `ai-center` | `ai-center/` | git submodule (wiamoxxx/ai-center) | PKGBUILD lives in that repo; launcher + ComfyUI build files, optional image bundles from `WIAMOX_AI_CENTER_IMAGES` (GBs), `arch=any`, `--nodeps` (no makedepends); project memory in its CLAUDE.md |
+| `ai-center` | `ai-center/` | git submodule (wiamoxxx/ai-center) | PKGBUILD lives in that repo; launcher only (ComfyUI container and image bundles were removed in 0.7.0), `arch=any`, `--nodeps` (no makedepends); project memory in its CLAUDE.md |
 | `wiamox-opencode` | `wiamox-opencode/` | npm tarball `opencode-linux-x64` (upstream prebuilt Bun binary), sha256-pinned | `provides=(opencode)`; `!strip` (strip corrupts the binary); wrapper sets offline env; `ai-center` depends on it; no makedepends → `--nodeps`; packs x64 + x64-baseline, wrapper picks by avx2; LSPs = optdepends only |
 | `wiamox-llama.cpp-cuda` | `wiamox-llama.cpp-cuda/` | git source `ggml-org/llama.cpp`, pinned by tag `bNNNN` + commit | `provides/conflicts=(llama.cpp)`; one package per GPU variant (ROCm later = `wiamox-llama.cpp-rocm/`); `/usr/bin/llama-server` (+cli, bench, quantize, gguf-split, perplexity, mtmd-cli for vision), libs in `/usr/lib/wiamox-llama.cpp` via RPATH; `GGML_NATIVE=OFF`, no curl; `ai-center` depends on `llama.cpp`; has makedepends → `--syncdeps` (cuda, cmake) |
+| `wiamox-comfyui-cuda` | `wiamox-comfyui-cuda/` | ComfyUI git tag `v$pkgver` + PyPI + PyTorch wheel index + `nodes.txt` (git, pinned by commit); all fetched at build time | `provides/conflicts=(comfyui)`; self-contained: uv-managed Python 3.12 in `/usr/lib/wiamox-comfyui/python`, torch `cu130` wheels (CUDA inside, only `nvidia-utils` from the system), `/usr/bin/wiamox-comfyui` wrapper (offline env), nodes copied to the user's folder by AI Center; `!strip`; `check()` = CPU smoke test; makedepends `uv git` → `--syncdeps`; ROCm later = `_backend=rocm7.2` copy; `ai-center` optdepends it |
 | `calamares` | `aur/calamares/` (gitignored) | the AUR, cloned/updated by build.sh | links libpython → rebuild after every Python update (`--force`) |
 | `coreutils` | `coreutils/` | coreutils tree on disk (`WIAMOX_COREUTILS_SRC`) | release tarball or git clone + gnulib; Arch's configure flags |
 
@@ -94,7 +95,7 @@ something important. User-facing details are in README.md.
 
 ## 6. Status (keep updated)
 
-- 04.10.2026: `ai-center` 0.3.0 (submodule pinned to `9513a89`, merged `main` of wiamoxxx/ai-center: ComfyUI image fixes (node submodules, pyproject deps, import disk-space check, `--extra-arg`) on top of the 0.3.0 look with themes, logo, status borders; 0.2.0 added ComfyUI as a Podman container, `containers/` + optional image bundles in the package). `build.sh` passes `WIAMOX_AI_CENTER_IMAGES` to the PKGBUILD as `AI_CENTER_IMAGES`; `check_libs` skips the bundles. `makepkg` not run yet; no bundle built yet. Submodule pinned to ai-center 0.5.1 (`29abf9e`, 19.10.2026).
+- 04.10.2026: `ai-center` 0.3.0 (submodule pinned to `9513a89`, merged `main` of wiamoxxx/ai-center: ComfyUI image fixes (node submodules, pyproject deps, import disk-space check, `--extra-arg`) on top of the 0.3.0 look with themes, logo, status borders; 0.2.0 added ComfyUI as a Podman container, `containers/` + optional image bundles in the package). `build.sh` passes `WIAMOX_AI_CENTER_IMAGES` to the PKGBUILD as `AI_CENTER_IMAGES`; `check_libs` skips the bundles. `makepkg` not run yet; no bundle built yet. Submodule pinned to ai-center 0.5.1 (`29abf9e`, 19.10.2026); now ai-center 0.7.0 (`65a4da8`, branch claude/focused-feynman-if7g75 of wiamoxxx/ai-center, 22.10.2026).
 - Done (PRs #1–#5, 30.09.–01.10.2026): woxed + calamares + coreutils in
   build.sh, clean env, library check, one-database guard, coreutils from a
   source tree.
@@ -136,3 +137,5 @@ something important. User-facing details are in README.md.
   documents every setting.
 - Commit PKGBUILD version changes that makepkg writes (`pkgver`/`pkgrel`).
 - Keep README.md (user-facing, English) and this file in sync.
+
+- 22.10.2026: added `wiamox-comfyui-cuda` 0.38.2 (ComfyUI is now native, no Podman; `ai-center` 0.7.0 dropped the container, the image bundles and `WIAMOX_AI_CENTER_IMAGES`). Written and the mechanics tested in Claude's environment against a stand-in ComfyUI (uv standalone Python relocated into the package dir, `check()` smoke test, wrapper, AI Center start flow, node sync); **not built with the real ComfyUI/PyTorch** (no GitHub/PyTorch index access there): first real build on the build machine is the test. Not yet in the Calamares "AI" bundle (`calamares-wiamox` netinstall.conf).

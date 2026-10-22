@@ -1,0 +1,22 @@
+#!/bin/sh
+# WiamOX ComfyUI: runs ComfyUI from the package's own Python environment.
+# AI Center starts this (wiamox-comfyui --listen 127.0.0.1 --port 8188
+# --base-directory ~/aihub/comfyui ...); all arguments go to ComfyUI.
+# Nothing here may reach the network: the machine is meant to work offline.
+LIB=${WIAMOX_COMFYUI_LIB:-/usr/lib/wiamox-comfyui}   # the variable is for tests
+PY=
+for p in "$LIB"/python/cpython-*/bin/python3; do PY=$p; break; done
+[ -x "$PY" ] || { echo "wiamox-comfyui: no Python in $LIB/python" >&2; exit 1; }
+
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1
+export DO_NOT_TRACK=1 ANONYMIZED_TELEMETRY=False NO_ALBUMENTATIONS_UPDATE=1
+export PYTHONNOUSERSITE=1 PYTHONUNBUFFERED=1
+unset PYTHONPATH PYTHONHOME
+
+# Extra flags decided at build time (only those this ComfyUI version knows).
+FLAGS=
+[ -f "$LIB/flags" ] && FLAGS=$(cat "$LIB/flags")
+
+cd "$LIB/app" || exit 1
+# shellcheck disable=SC2086  # FLAGS is a space-separated list on purpose
+exec "$PY" main.py $FLAGS "$@"

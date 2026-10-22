@@ -1,0 +1,171 @@
+# Maintainer: Wiam Khader
+#
+# ComfyUI for WiamOX, CUDA (NVIDIA) variant: image & video workflows behind
+# the AI Center "ComfyUI" card. Self-contained and fully offline:
+#
+#   /usr/lib/wiamox-comfyui/python         own Python (uv-managed standalone build)
+#                                          with PyTorch (CUDA libraries inside the
+#                                          wheels), ComfyUI's and the nodes' packages
+#   /usr/lib/wiamox-comfyui/app            ComfyUI (pinned release tag)
+#   /usr/lib/wiamox-comfyui/custom_nodes   bundled nodes (nodes.txt, pinned by commit)
+#   /usr/lib/wiamox-comfyui/{VERSION,flags}
+#   /usr/bin/wiamox-comfyui                wrapper AI Center starts (offline env)
+#
+# Only the NVIDIA driver comes from the system (nvidia-utils); nothing else
+# about Python or CUDA depends on Arch's rolling versions, so system updates
+# cannot break it. Model files are NOT part of this package: the user puts
+# them in ~/aihub/models/comfyui (AI Center links that folder in).
+#
+# Same scheme as wiamox-llama.cpp-cuda: one package per GPU backend, all
+# providing comfyui and conflicting with each other. A ROCm variant later is
+# a copy of this folder with _backend=rocm7.2 and amd instead of nvidia deps.
+#
+# Everything is fetched at BUILD time only (needs internet: PyPI, the PyTorch
+# wheel index, python-build-standalone and GitHub). To bump ComfyUI: change
+# pkgver (the release tag without "v"), pkgrel=1. To change nodes: nodes.txt,
+# bump pkgrel. A successful build records the exact package versions in
+# /usr/share/doc/wiamox-comfyui-cuda/requirements.lock.
+#
+# makepkg's check() starts the finished environment on the CPU and waits for
+# ComfyUI's web server, so a package that cannot start is never built.
+
+pkgname=wiamox-comfyui-cuda
+pkgver=0.38.2
+pkgrel=1
+pkgdesc='ComfyUI (CUDA build, self-contained Python, works offline) for WiamOX AI Center'
+arch=(x86_64)
+url='https://github.com/comfyanonymous/ComfyUI'
+license=(GPL-3.0-only)   # ComfyUI; the bundled wheels and nodes keep their own licenses
+depends=(gcc-libs glibc nvidia-utils ffmpeg libglvnd glib2 libsm libxext libxrender)
+makedepends=(uv git)
+provides=(comfyui)
+conflicts=(comfyui)
+options=(!strip !debug !lto)   # strip corrupts the CUDA/torch wheels' libraries
+source=("ComfyUI::git+https://github.com/comfyanonymous/ComfyUI.git#tag=v$pkgver"
+        nodes.txt install-nodes.sh wiamox-comfyui)
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP')   # git source pinned by tag; local files
+
+_lib=/usr/lib/wiamox-comfyui
+_python=3.12                   # what PyTorch and the custom nodes are tested on
+_backend=cu130                 # uv --torch-backend: cu130 now, rocm7.2 for the AMD variant
+_torch=(torch torchvision torchaudio)
+# Flags the wrapper adds when this ComfyUI version knows them (probed in check()).
+_optional_flags=(--disable-api-nodes)
+
+_env() {
+  # Nothing from $HOME: uv's cache and Python live inside the build folder.
+  export UV_CACHE_DIR=$srcdir/uv-cache UV_NO_CONFIG=1 UV_LINK_MODE=copy
+  export UV_PYTHON_INSTALL_DIR=$srcdir/stage/python UV_PYTHON_INSTALL_BIN=0
+  export UV_PYTHON_PREFERENCE=only-managed
+  export PIP_DISABLE_PIP_VERSION_CHECK=1 PYTHONNOUSERSITE=1
+}
+
+_py() { local p; for p in "$srcdir"/stage/python/cpython-*/bin/python3; do echo "$p"; return; done; }
+
+build() {
+  _env
+  local stage=$srcdir/stage py
+  mkdir -p "$stage"
+
+  uv python install --no-bin "$_python"
+  # uv also makes a minor-version symlink (cpython-3.12-...); only the real
+  # folder is shipped, the wrapper finds it by glob.
+  find "$stage/python" -maxdepth 1 -type l -delete
+  py=$(_py)
+  [[ -x $py ]] || { echo "no Python installed in $stage/python"; return 1; }
+  rm -f "$stage"/python/cpython-*/lib/python3*/EXTERNALLY-MANAGED   # our private Python
+
+  cp -a "$srcdir/ComfyUI" "$stage/app"
+  rm -rf "$stage/app/.git"
+
+  # torch, torchvision, torchaudio from the PyTorch wheel index (CUDA libraries
+  # included); everything else from PyPI, in one resolution with ComfyUI's list.
+  uv pip install --python "$py" --no-cache --compile-bytecode \
+    --torch-backend "$_backend" pip setuptools wheel "${_torch[@]}" \
+    -r "$stage/app/requirements.txt"
+
+  # Custom nodes must not replace torch or numpy.
+  uv pip freeze --python "$py" | { grep -iE '^(torch|torchvision|torchaudio|numpy|pillow)==' || true; } \
+    > "$srcdir/constraints.txt"
+  PY=$py NODES_FILE=$srcdir/nodes.txt NODE_DIR=$stage/custom_nodes \
+    CONSTRAINTS=$srcdir/constraints.txt REPORT=$stage/nodes-report.txt \
+    TORCH_BACKEND=$_backend bash "$srcdir/install-nodes.sh"
+  find "$stage/custom_nodes" -name .git -prune -exec rm -rf {} +
+}
+
+check() {
+  _env
+  local stage=$srcdir/stage py smoke=$srcdir/smoke port=18188 pid ok=0 f i
+  py=$(_py)
+  rm -rf "$smoke"; mkdir -p "$smoke"
+  cp -a "$stage/custom_nodes" "$smoke/custom_nodes"   # the nodes may write into their folder
+  cd "$stage/app"
+
+  # The flags AI Center passes must exist in this ComfyUI version.
+  "$py" main.py --help > "$srcdir/help.txt" 2>&1 || { cat "$srcdir/help.txt"; return 1; }
+  for f in --listen --port --base-directory --disable-auto-launch --lowvram --cpu; do
+    grep -q -- "$f" "$srcdir/help.txt" ||
+      { echo "ComfyUI $pkgver has no $f: AI Center's command line needs updating"; return 1; }
+  done
+  : > "$srcdir/flags"
+  for f in "${_optional_flags[@]}"; do
+    grep -q -- "$f" "$srcdir/help.txt" && echo "$f" >> "$srcdir/flags"
+  done
+
+  # Smoke test on the CPU, offline settings, the bundled nodes loaded.
+  HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 DO_NOT_TRACK=1 NO_ALBUMENTATIONS_UPDATE=1 \
+    "$py" main.py --cpu --listen 127.0.0.1 --port "$port" --base-directory "$smoke" \
+    --disable-auto-launch $(cat "$srcdir/flags") > "$srcdir/smoke.log" 2>&1 &
+  pid=$!
+  for i in $(seq 1 90); do
+    if "$py" -c "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:$port/system_stats', timeout=3)" 2>/dev/null; then
+      ok=1; break
+    fi
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 2
+  done
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+  if (( ! ok )); then
+    echo "ComfyUI did not start. Last lines of the log:"; tail -n 40 "$srcdir/smoke.log"
+    return 1
+  fi
+  echo "Smoke test passed: ComfyUI answered on :$port"
+  if grep -q 'IMPORT FAILED' "$srcdir/smoke.log"; then
+    echo "WARNING: these custom nodes failed to import (the package is still built):"
+    grep -B1 -A3 'IMPORT FAILED' "$srcdir/smoke.log" | head -n 60
+  fi
+}
+
+package() {
+  _env
+  local stage=$srcdir/stage py dest=$pkgdir$_lib
+  py=$(_py)
+
+  # Byte code of our own files points at the final location, not the build folder.
+  find "$stage/app" "$stage/custom_nodes" -name __pycache__ -prune -exec rm -rf {} +
+  "$py" -m compileall -q -s "$stage" -p "$_lib" "$stage/app" "$stage/custom_nodes" || true
+
+  # Console scripts in python/bin carry the build path in their shebang; AI
+  # Center never uses them, but they should not point into a folder that is gone.
+  grep -rIl --null "$srcdir/stage" "$stage"/python/cpython-*/bin 2>/dev/null |
+    xargs -0 -r sed -i "s|$srcdir/stage|$_lib|g"
+
+  install -d "$dest"
+  mv "$stage/app" "$stage/python" "$stage/custom_nodes" "$dest/"
+  py=$(echo "$dest"/python/cpython-*/bin/python3)   # moved: from here on, use this one
+  {
+    echo "comfyui=v$pkgver"
+    echo "package=$pkgver-$pkgrel"
+    echo "python=$("$py" -c 'import platform; print(platform.python_version())')"
+    echo "torch=$("$py" -c 'import torch; print(torch.__version__)' 2>/dev/null || echo unknown)"
+  } > "$dest/VERSION"
+  install -m644 "$srcdir/flags" "$dest/flags"
+
+  install -Dm755 "$srcdir/wiamox-comfyui" "$pkgdir/usr/bin/wiamox-comfyui"
+  local doc=$pkgdir/usr/share/doc/$pkgname
+  install -d "$doc"
+  uv pip freeze --python "$py" > "$doc/requirements.lock"
+  install -m644 "$srcdir/nodes.txt" "$stage/nodes-report.txt" "$doc/"
+  install -Dm644 "$dest/app/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

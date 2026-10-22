@@ -8,9 +8,10 @@ script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 |---|---|---|
 | `linux/` | `linux`, `linux-headers`: the WiamOX kernel | a kernel source tree **on your disk** (with your own edits) |
 | `calamares-wiamox/` | `calamares-wiamox`: installer branding and config | git submodule → [wiamoxxx/calamares-wiamox](https://github.com/wiamoxxx/calamares-wiamox) |
-| `ai-center/` | `ai-center`: WiamOX AI Center (local AI launcher: llama.cpp via Podman, ComfyUI, ACE-Step, OpenCode) | git submodule → [wiamoxxx/ai-center](https://github.com/wiamoxxx/ai-center) |
+| `ai-center/` | `ai-center`: WiamOX AI Center (local AI launcher for llama.cpp, ComfyUI, AI Music, OpenCode) | git submodule → [wiamoxxx/ai-center](https://github.com/wiamoxxx/ai-center) |
 | `wiamox-opencode/` | `wiamox-opencode` (provides `opencode`): the OpenCode coding agent, offline build | the upstream prebuilt binary from the npm registry, pinned by sha256, downloaded at build time |
 | `wiamox-llama.cpp-cuda/` | `wiamox-llama.cpp-cuda` (provides `llama.cpp`): `llama-server` for AI Center, CUDA build | llama.cpp from GitHub, pinned by commit, built at build time |
+| `wiamox-comfyui-cuda/` | `wiamox-comfyui-cuda` (provides `comfyui`): ComfyUI for AI Center, own Python + PyTorch, works offline, CUDA build | ComfyUI release tag, PyPI and the PyTorch wheel index, custom nodes pinned by commit; all fetched at build time |
 | `woxed/` | `woxed`: the WiamOX Editor | git submodule → [wiamoxxx/woxed](https://github.com/wiamoxxx/woxed) |
 | `aur/calamares/` | `calamares`: the installer program | the AUR, cloned on first build (not part of this repo) |
 | `coreutils/` | `coreutils`: the basic commands (`ls`, `cp`, ...) | a coreutils source tree **on your disk** (with your own edits) |
@@ -141,20 +142,10 @@ scripts/build.sh ai-center
 ```
 
 Builds the pinned version recorded in the `ai-center/` submodule: the
-launcher plus the container build files (arch `any`, needs `podman`,
-`python-textual`, `python-tomlkit`, `zstd` from Arch). Models and GPU
-setup are per-user data, not part of the package. Run it with
-`wiamox-ai-center`.
-
-**ComfyUI image bundles** (optional, several GB): build them once with
-`ai-center/scripts/build-comfyui-image.sh` (see
-`ai-center/containers/comfyui/README.md`), then point
-`WIAMOX_AI_CENTER_IMAGES` in `local.conf` at the folder holding the
-`.tar.zst` + `.json` files (default: `ai-center/images/`). `build.sh` shows
-which bundles go in; they are installed to
-`/usr/share/wiamox-ai-center/images/`, where AI Center imports them on the
-first ComfyUI start. Without bundles the package has only the launcher and
-the ComfyUI build files (AI Center can then build online or import later).
+launcher only (arch `any`, needs `python-textual` and `python-tomlkit` from
+Arch). The backends come from their own packages (`wiamox-llama.cpp-cuda`,
+`wiamox-comfyui-cuda`, `wiamox-yue2.cpp-cuda`, `wiamox-opencode`); models
+are per-user data. Run it with `wiamox-ai-center`.
 
 To put it on the ISO, `ai-center` must be listed in woxclean1's
 `packages.x86_64`. Newer version: change it in its own repo, bump
@@ -197,6 +188,39 @@ a portable baseline (no `-march=native`); CUDA architectures are set in
 `_cuda_archs`. New version: change `_tag`/`_commit`, `pkgrel=1`.
 Must be in woxKitchen and in woxclean1's `packages.x86_64` before `ai-center`
 can be installed.
+
+## Building wiamox-comfyui-cuda
+
+```bash
+scripts/build.sh wiamox-comfyui-cuda
+```
+
+Builds ComfyUI as a **self-contained** package, so the installed machine
+needs no internet, no pip and no Podman:
+
+- its own Python (uv-managed standalone build, `_python=3.12`), so Arch's
+  rolling Python cannot break it;
+- PyTorch with the CUDA libraries inside the wheels (`_backend=cu130`;
+  only the NVIDIA driver, `nvidia-utils`, comes from the system);
+- ComfyUI at the release tag `v$pkgver`, and the custom nodes of
+  `wiamox-comfyui-cuda/nodes.txt` (pinned by commit; ComfyUI-Manager is
+  left out on purpose, it is online-only).
+
+Needs `uv` and `git` (installed by `--syncdeps`) and internet **at build
+time only**; the build is large (about 10 GB of wheels, 10-30 minutes).
+`check()` starts the finished environment on the CPU and waits for
+ComfyUI's web server; a package that cannot start is not built, and nodes
+that fail to import are listed as a warning. The exact package versions are
+saved in `/usr/share/doc/wiamox-comfyui-cuda/requirements.lock`. If the
+library check complains about the bundled wheels, try `--no-libcheck`.
+
+AI Center runs `/usr/bin/wiamox-comfyui` (port 8188, loopback) with
+`--base-directory ~/aihub/comfyui`; models are the user's files in
+`~/aihub/models/comfyui`. New ComfyUI version: change `pkgver`, `pkgrel=1`.
+New/changed node: edit `nodes.txt`, bump `pkgrel`. ROCm later = a copy of
+the folder as `wiamox-comfyui-rocm` with `_backend=rocm7.2`. Must be in
+woxKitchen (and in the Calamares "AI" bundle) before users can run the
+ComfyUI card.
 
 ## Building woxed
 

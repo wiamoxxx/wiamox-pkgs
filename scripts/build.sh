@@ -13,6 +13,7 @@
 #   scripts/build.sh wiamox-wox           wox why: explain failed commands with the local AI
 #   scripts/build.sh wiamox-llama.cpp-cuda  llama.cpp / llama-server, CUDA build
 #   scripts/build.sh wiamox-yue2.cpp-cuda   yue2.cpp / yue-server (AI music), CUDA build
+#   scripts/build.sh wiamox-comfyui-cuda    ComfyUI with its own Python + PyTorch (offline), CUDA build
 #   scripts/build.sh calamares            the installer program, from the AUR
 #   scripts/build.sh coreutils            coreutils from your source tree
 #   scripts/build.sh <pkg> --no-libcheck  skip the shared-library check
@@ -26,7 +27,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 usage() {
-  sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -79,22 +80,10 @@ clean_build_env
 export WIAMOX_KERNEL_SRC=${WIAMOX_KERNEL_SRC-} WIAMOX_KERNEL_CONFIG=${WIAMOX_KERNEL_CONFIG:-fragments}
 export WIAMOX_COREUTILS_SRC=${WIAMOX_COREUTILS_SRC-}
 export BUILDDIR=${WIAMOX_BUILDDIR:-$ROOT/build}
-# ai-center: folder with image bundles (*.tar.zst + *.json from its
-# scripts/build-comfyui-image.sh) that its PKGBUILD copies into the package.
-export AI_CENTER_IMAGES=${WIAMOX_AI_CENTER_IMAGES-}
 # Kept out of the package folders, so the submodules stay clean. SRCDEST
 # holds downloaded sources (woxed: Neovim, ~33 plugin repos) between builds.
 export PKGDEST=$ROOT/out LOGDEST=$BUILDDIR/logs SRCDEST=${SRCDEST:-$BUILDDIR/sources}
 mkdir -p "$PKGDEST" "$LOGDEST" "$SRCDEST"
-if [[ $pkg == ai-center ]]; then
-  img_dir=${AI_CENTER_IMAGES:-$pkgdir/images}
-  if compgen -G "$img_dir/*.tar.zst" >/dev/null; then
-    msg "ai-center: including image bundles from $img_dir:"
-    du -h "$img_dir"/*.tar.zst | sed 's/^/    /'
-  else
-    msg "ai-center: no image bundles in $img_dir (launcher + build files only; set WIAMOX_AI_CENTER_IMAGES to include some)."
-  fi
-fi
 if [[ -z ${MAKEFLAGS-} ]]; then
   MAKEFLAGS="-j$(nproc)"
   export MAKEFLAGS
