@@ -135,8 +135,11 @@ can boot the old kernel if 7.3 misbehaves. It does not replace Arch's `linux`.
     cameras, I2C/ISH/SFH sensors and touchpads, laptop vendor drivers
     (Dell, HP, Lenovo, ASUS, Acer, MSI, Samsung Galaxy Book, Surface,
     System76, Tuxedo, ...), VM guests.
-  - **off:** PATA/IDE, old PCI NICs, Wi-Fi 4/early 5 chips (ath9k, b43,
-    rtlwifi, mt76x0/x2, ...), Broadcom SDIO, OHCI, FireWire, PCMCIA, ISA,
+  - **Wi-Fi: everything.** All families are built, old and new: Intel
+    (iwlwifi, dvm, legacy 3945/4965), Broadcom (brcmfmac PCIe/USB/SDIO,
+    brcmsmac, b43), Realtek (rtw88/89, rtlwifi, rtl8xxxu), MediaTek
+    (mt76), Qualcomm/Atheros (ath5k to ath12k), Ralink, Marvell, ...
+  - **off:** PATA/IDE, old PCI NICs, OHCI, FireWire, PCMCIA, ISA,
     floppy, parport, old HDA codecs, Toshiba/Fujitsu/Sony/Panasonic laptop
     drivers, industrial-PC and Atom-tablet drivers, ARM-board Type-C chips,
     legacy vsyscall.
