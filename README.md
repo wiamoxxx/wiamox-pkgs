@@ -6,6 +6,7 @@ script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 
 | Folder | Package | Source |
 |---|---|---|
+| `linux-7.3/` | `linux-7.3`, `linux-7.3-headers`: the WiamOX 7.3 kernel (own package, lean config) | the 7.3 source tree in `~/Sources` |
 | `linux/` | `linux`, `linux-headers`: the WiamOX kernel | a kernel source tree **on your disk** (with your own edits) |
 | `calamares-wiamox/` | `calamares-wiamox`: installer branding and config | git submodule → [wiamoxxx/calamares-wiamox](https://github.com/wiamoxxx/calamares-wiamox) |
 | `ai-center/` | `ai-center`: WiamOX AI Center (local AI launcher for llama.cpp, ComfyUI, AI Music, OpenCode) | git submodule → [wiamoxxx/ai-center](https://github.com/wiamoxxx/ai-center) |
@@ -105,6 +106,52 @@ that, so the repo shows which version was built.
   `cp build/linux/src/linux-wiamox/.config linux/config`
 - **Using a complete config instead:** put it in `linux/config` and set
   `WIAMOX_KERNEL_CONFIG=full` in `local.conf`.
+
+## Building the 7.3 kernel
+
+```sh
+scripts/build.sh linux-7.3 --config-only   # first: make + check the config, no compile (minutes)
+scripts/build.sh linux-7.3                 # build, then add to woxKitchen
+scripts/build.sh linux-7.3 --install       # ... and install it on this machine
+```
+
+`linux-7.3` is a **separate package** from `linux` (7.2.x): it installs next
+to it (`/usr/lib/modules/7.3.x-wiamox`, `/boot/vmlinuz-linux-7.3`), so you
+can boot the old kernel if 7.3 misbehaves. It does not replace Arch's `linux`.
+
+- **Source:** `WIAMOX_KERNEL73_SRC` in `local.conf` (default
+  `/home/lol/Sources/linux-7.3`). It may also be the folder `~/Sources`;
+  the newest `linux-7.3*` inside is used (releases before `-rc`). Edit the
+  tree as you like; a build copies it and never changes it.
+- **Config:** `x86_64_defconfig` + `linux-7.3/wiamox-base.config` +
+  `linux-7.3/wiamox-drivers.config`, done by `linux-7.3/make-config.sh`.
+  Targets recent AMD/Intel PCs and laptops (about 2018 and newer):
+  - responsiveness: full preemption, 1000 Hz, BFQ/Kyber, sched_ext,
+    autogroup, MGLRU, zswap/zram (zstd), BBR + fq, performance governor
+    with pstate (intel/amd); debug and hardening overhead off.
+  - hardware: amdgpu, i915/xe, nouveau, NPUs (ivpu, amdxdna), Wi-Fi 6/7
+    (iwlwifi, mt76 7915/7921/7922/7925, rtw88/89, ath10k-12k), Bluetooth,
+    NVMe/AHCI, USB4/Thunderbolt/Type-C, SOF/SoundWire/HDA audio, IPU6
+    cameras, I2C/ISH/SFH sensors and touchpads, laptop vendor drivers
+    (Dell, HP, Lenovo, ASUS, Acer, MSI, Samsung Galaxy Book, Surface,
+    System76, Tuxedo, ...), VM guests.
+  - **off:** PATA/IDE, old PCI NICs, Wi-Fi 4/early 5 chips (ath9k, b43,
+    rtlwifi, mt76x0/x2, ...), Broadcom SDIO, OHCI, FireWire, PCMCIA, ISA,
+    floppy, parport, old HDA codecs, Toshiba/Fujitsu/Sony/Panasonic laptop
+    drivers, industrial-PC and Atom-tablet drivers, ARM-board Type-C chips,
+    legacy vsyscall.
+- **Not compiled here:** this config was written without access to the
+  7.3 tree. `--config-only` (and every build) prints the fragment lines
+  7.3 did not accept, any legacy option that came back on, and the totals.
+  Read that output on the first run and fix the fragments.
+- After a good build, freeze the result as a reference (shown as a diff in
+  later builds, or used with `WIAMOX_KERNEL73_CONFIG=full`):
+  `cp build/linux-7.3/src/linux-wiamox/.config linux-7.3/config`
+- Rebuilding the same version after changing source or config: raise
+  `pkgrel` in `linux-7.3/PKGBUILD`, as for `linux`.
+- Switching the ISO to 7.3: list `linux-7.3` and `linux-7.3-headers`
+  instead of `linux` in woxclean1's `packages.x86_64` and boot entries
+  (mkinitcpio names the image after the package: `vmlinuz-linux-7.3`).
 
 ## Building calamares-wiamox
 

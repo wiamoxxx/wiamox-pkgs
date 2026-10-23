@@ -24,6 +24,7 @@ something important. User-facing details are in README.md.
 | Package | Folder | Source | Notes |
 |---|---|---|---|
 | `linux`, `linux-headers` | `linux/` | kernel tree on disk (`WIAMOX_KERNEL_SRC`) | named `linux` to replace Arch's; config from fragments; ~30 GB to build |
+| `linux-7.3`, `linux-7.3-headers` | `linux-7.3/` | kernel 7.3 tree on disk (`WIAMOX_KERNEL73_SRC`, default `/home/lol/Sources/linux-7.3`, or the `Sources` folder: newest `linux-7.3*`) | **separate package** from `linux` (installs side by side, `/boot/vmlinuz-linux-7.3`); lean config for ~2018+ AMD/Intel PCs/laptops (`wiamox-base.config` + `wiamox-drivers.config`, built by `make-config.sh`); `build.sh linux-7.3 --config-only` checks the config without compiling; no `config` reference yet |
 | `calamares-wiamox` | `calamares-wiamox/` | git submodule (wiamoxxx/calamares-wiamox) | config-only, `--nodeps` |
 | `woxed` | `woxed/` | git submodule (wiamoxxx/woxed) | needs internet at build time; `WOXED_JOBS` for parser compile |
 | `ai-center` | `ai-center/` | git submodule (wiamoxxx/ai-center) | PKGBUILD lives in that repo; launcher only (ComfyUI container and image bundles were removed in 0.7.0), `arch=any`, `--nodeps` (no makedepends); project memory in its CLAUDE.md |
@@ -139,3 +140,5 @@ something important. User-facing details are in README.md.
 - Keep README.md (user-facing, English) and this file in sync.
 
 - 22.10.2026: added `wiamox-comfyui-cuda` 0.38.2 (ComfyUI is now native, no Podman; `ai-center` 0.7.0 dropped the container, the image bundles and `WIAMOX_AI_CENTER_IMAGES`). Written and the mechanics tested in Claude's environment against a stand-in ComfyUI (uv standalone Python relocated into the package dir, `check()` smoke test, wrapper, AI Center start flow, node sync); **not built with the real ComfyUI/PyTorch** (no GitHub/PyTorch index access there): first real build on the build machine is the test. Not yet in the Calamares "AI" bundle (`calamares-wiamox` netinstall.conf).
+
+- 23.10.2026: added `linux-7.3` (builder + lean config for Linux 7.3, decided with the owner: separate package, hardware ~2018+, GPUs AMD + Intel + nouveau). Derived from the 7.2 fragments with legacy/non-PC drivers removed. **Not run against a real 7.3 tree** (Claude's environment cannot reach kernel.org and is not Arch): first step on the build machine is `scripts/build.sh linux-7.3 --config-only`, then fix whatever "Fragment settings the kernel did not accept" lists; only the shell logic (source lookup, argument handling) was tested with a fake tree. After a good first build save `.config` as `linux-7.3/config`.

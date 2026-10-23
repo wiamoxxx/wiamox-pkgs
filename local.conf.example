@@ -5,6 +5,12 @@
 # Your edits in this tree are what gets packaged.
 WIAMOX_KERNEL_SRC=/home/lol/wiamox-kernel/linux-7.2.8
 
+# Linux 7.3 source (scripts/build.sh linux-7.3): the tree itself, or a folder
+# that contains it (the newest linux-7.3* inside is used).
+WIAMOX_KERNEL73_SRC=/home/lol/Sources/linux-7.3
+# fragments (default) = x86_64_defconfig + linux-7.3/wiamox-*.config, full = linux-7.3/config
+#WIAMOX_KERNEL73_CONFIG=fragments
+
 # coreutils source tree to build from (the folder with configure.ac): an
 # unpacked release tarball, or a git clone with the gnulib submodule.
 # Your edits in this tree are what gets packaged.

@@ -1,0 +1,281 @@
+# Maintainer: Wiam Khader
+#
+# WiamOX kernel 7.3, built from a kernel source tree on this machine.
+#
+# There is no download: the source is whatever is in $WIAMOX_KERNEL73_SRC,
+# including your own edits. Set it in ../local.conf (see local.conf.example)
+# or in the environment. ../scripts/build.sh linux-7.3 is the normal way
+# to run this.
+#
+# Unlike ../linux (7.2.x, package "linux") this is a separate package,
+# "linux-7.3" + "linux-7.3-headers". It can be installed next to the other
+# kernel; modules live in /usr/lib/modules/7.3.x-wiamox, the boot image
+# is /boot/vmlinuz-linux-7.3 (mkinitcpio names it after pkgbase).
+#
+# Config (WIAMOX_KERNEL73_CONFIG):
+#   fragments  (default) x86_64_defconfig + wiamox-base.config + wiamox-drivers.config
+#              (lean: recent PCs/laptops only), via make-config.sh
+#   full       ./config as it is (make one from a finished build:
+#              cp build/linux-7.3/src/linux-wiamox/.config linux-7.3/config)
+# make-config.sh prints every fragment line the kernel did not accept.
+#
+# pkgver is read from the source tree's Makefile. Rebuilding the same
+# kernel version after editing the source? Bump pkgrel, otherwise pacman
+# will not update the installed kernel.
+
+pkgbase=linux-7.3
+pkgver=7.3.0
+pkgrel=1
+pkgdesc='WiamOX'
+url='https://github.com/wiamoxxx/wiamox-pkgs'
+arch=(x86_64)
+license=(GPL-2.0-only)
+makedepends=(
+  bc
+  cpio
+  gettext
+  libelf
+  pahole
+  perl
+  python
+  tar
+  xz
+  zstd
+)
+options=(
+  !debug
+  !strip
+)
+source=()
+sha256sums=()
+
+_srcname=linux-wiamox
+
+export KBUILD_BUILD_HOST=wiamox
+export KBUILD_BUILD_USER=$pkgbase
+export KBUILD_BUILD_TIMESTAMP="$(date -Ru${SOURCE_DATE_EPOCH:+d @$SOURCE_DATE_EPOCH})"
+
+# WIAMOX_* from the environment win over ../local.conf.
+_load_conf() {
+  local conf="$startdir/../local.conf"
+  if [[ -r $conf ]]; then
+    local src=${WIAMOX_KERNEL73_SRC-} cfg=${WIAMOX_KERNEL73_CONFIG-}
+    # shellcheck disable=SC1090
+    source "$conf"
+    [[ -n $src ]] && WIAMOX_KERNEL73_SRC=$src
+    [[ -n $cfg ]] && WIAMOX_KERNEL73_CONFIG=$cfg
+  fi
+  # shellcheck source=find-src.sh
+  source "$startdir/find-src.sh"
+  local found
+  if ! found=$(_wox_find_kernel73_src "${WIAMOX_KERNEL73_SRC-}"); then
+    error "WIAMOX_KERNEL73_SRC must point to the Linux 7.3 source tree (the folder with the top-level Makefile),"
+    plain "or to a folder that contains linux-7.3*, like ~/Sources."
+    plain "Currently: '${WIAMOX_KERNEL73_SRC-}'. Set it in local.conf or the environment."
+    return 1
+  fi
+  WIAMOX_KERNEL73_SRC=$found
+}
+
+# 7.3.1 from VERSION/PATCHLEVEL/SUBLEVEL/EXTRAVERSION; -rc3 becomes .rc3
+# (pacman versions cannot contain '-', and 7.3.0.rc3 sorts before 7.3.0).
+_kernel_version() {
+  awk -F' *= *' '
+    $1 == "VERSION"      { v = $2 }
+    $1 == "PATCHLEVEL"   { p = $2 }
+    $1 == "SUBLEVEL"     { s = $2 }
+    $1 == "EXTRAVERSION" { e = $2; exit }
+    END { printf "%s.%s.%s%s\n", v, p, s, e }
+  ' "$1/Makefile" | sed 's/-/./g'
+}
+
+_make() {
+  test -s version
+  make KERNELRELEASE="$(<version)" "$@"
+}
+
+pkgver() {
+  _load_conf || return 1
+  _kernel_version "$WIAMOX_KERNEL73_SRC"
+}
+
+prepare() {
+  _load_conf || return 1
+
+  echo "Copying kernel source from $WIAMOX_KERNEL73_SRC ..."
+  rm -rf "${srcdir:?}/$_srcname"
+  mkdir -p "$srcdir/$_srcname"
+  # .git is left out so the kernel's setlocalversion adds no "+" or hash.
+  tar -C "$WIAMOX_KERNEL73_SRC" --exclude=.git --exclude='*.o' --exclude='*.ko' -cf - . |
+    tar -C "$srcdir/$_srcname" -xf -
+
+  cd "$srcdir/$_srcname"
+  # Clear anything left over from builds in your own source tree.
+  make -s mrproper
+
+  local mode=${WIAMOX_KERNEL73_CONFIG:-fragments}
+  echo "Setting config ($mode) ..."
+  MERGE_LOG="$srcdir/merge_config.log" "$startdir/make-config.sh" "$startdir" "$mode"
+
+  # syncconfig writes include/config/auto.conf, where kernelrelease reads
+  # CONFIG_LOCALVERSION ("-wiamox") from.
+  make -s syncconfig
+  make -s kernelrelease > version
+  echo "Prepared $pkgbase version $(<version)"
+}
+
+build() {
+  cd "$srcdir/$_srcname"
+  _make all
+  _make -C tools/bpf/bpftool vmlinux.h feature-clang-bpf-co-re=1
+}
+
+_package() {
+  pkgdesc="The $pkgdesc kernel and modules"
+  depends=(
+    coreutils
+    initramfs
+    kmod
+  )
+  optdepends=(
+    'wireless-regdb: to set the correct wireless channels of your country'
+    'linux-firmware: firmware images needed for some devices'
+    'scx-scheds: to use sched-ext schedulers'
+  )
+  # Same as Arch's linux, for the modules this config builds
+  # (virtualbox-guest-utils needs VIRTUALBOX-GUEST-MODULES).
+  provides=(
+    NTSYNC-MODULE
+    VIRTUALBOX-GUEST-MODULES
+    WIREGUARD-MODULE
+  )
+
+  cd "$srcdir/$_srcname"
+  local modulesdir="$pkgdir/usr/lib/modules/$(<version)"
+
+  echo "Installing boot image..."
+  # systemd expects to find the kernel here to allow hibernation
+  install -Dm644 "$(_make -s image_name)" "$modulesdir/vmlinuz"
+
+  # Used by mkinitcpio to name the kernel: /boot/vmlinuz-linux, linux.preset
+  echo "$pkgbase" | install -Dm644 /dev/stdin "$modulesdir/pkgbase"
+
+  echo "Installing modules..."
+  ZSTD_CLEVEL=19 _make INSTALL_MOD_PATH="$pkgdir/usr" INSTALL_MOD_STRIP=1 \
+    DEPMOD=/doesnt/exist modules_install  # Suppress depmod
+
+  # remove build link
+  rm -f "$modulesdir"/build
+}
+
+_package-headers() {
+  pkgdesc="Headers and scripts for building modules for the $pkgdesc kernel"
+  depends=(pahole)
+
+  cd "$srcdir/$_srcname"
+  local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
+
+  echo "Installing build files..."
+  install -Dt "$builddir" -m644 .config Makefile Module.symvers System.map \
+    version vmlinux tools/bpf/bpftool/vmlinux.h
+  local f
+  for f in localversion*; do
+    [[ -f $f ]] && install -Dt "$builddir" -m644 "$f"
+  done
+  install -Dt "$builddir/kernel" -m644 kernel/Makefile
+  install -Dt "$builddir/arch/x86" -m644 arch/x86/Makefile
+  cp -t "$builddir" -a scripts
+  if [[ -e scripts/gdb/vmlinux-gdb.py ]]; then
+    ln -srt "$builddir" "$builddir/scripts/gdb/vmlinux-gdb.py"
+  fi
+
+  # required when STACK_VALIDATION is enabled
+  install -Dt "$builddir/tools/objtool" tools/objtool/objtool
+
+  # required when DEBUG_INFO_BTF_MODULES is enabled
+  install -Dt "$builddir/tools/bpf/resolve_btfids" tools/bpf/resolve_btfids/resolve_btfids
+
+  echo "Installing headers..."
+  cp -t "$builddir" -a include
+  cp -t "$builddir/arch/x86" -a arch/x86/include
+  install -Dt "$builddir/arch/x86/kernel" -m644 arch/x86/kernel/asm-offsets.s
+
+  install -Dt "$builddir/drivers/md" -m644 drivers/md/*.h
+  install -Dt "$builddir/net/mac80211" -m644 net/mac80211/*.h
+
+  # https://bugs.archlinux.org/task/13146
+  install -Dt "$builddir/drivers/media/i2c" -m644 drivers/media/i2c/msp3400-driver.h
+
+  # https://bugs.archlinux.org/task/20402
+  install -Dt "$builddir/drivers/media/usb/dvb-usb" -m644 drivers/media/usb/dvb-usb/*.h
+  install -Dt "$builddir/drivers/media/dvb-frontends" -m644 drivers/media/dvb-frontends/*.h
+  install -Dt "$builddir/drivers/media/tuners" -m644 drivers/media/tuners/*.h
+
+  # https://bugs.archlinux.org/task/71392
+  install -Dt "$builddir/drivers/iio/common/hid-sensors" -m644 drivers/iio/common/hid-sensors/*.h
+
+  echo "Installing KConfig files..."
+  find . -name 'Kconfig*' -exec install -Dm644 {} "$builddir/{}" \;
+
+  if grep -q '^CONFIG_RUST=y' .config; then
+    echo "Installing Rust files..."
+    install -Dt "$builddir/rust" -m644 rust/*.rmeta
+    install -Dt "$builddir/rust" rust/*.so
+  fi
+
+  echo "Installing unstripped VDSO..."
+  _make INSTALL_MOD_PATH="$pkgdir/usr" vdso_install \
+    link=  # Suppress build-id symlinks
+
+  echo "Removing unneeded architectures..."
+  local arch
+  for arch in "$builddir"/arch/*/; do
+    [[ $arch = */x86/ ]] && continue
+    echo "Removing $(basename "$arch")"
+    rm -r "$arch"
+  done
+
+  echo "Removing documentation..."
+  rm -rf "$builddir/Documentation"
+
+  echo "Removing broken symlinks..."
+  find -L "$builddir" -type l -printf 'Removing %P\n' -delete
+
+  echo "Removing loose objects..."
+  find "$builddir" -type f -name '*.o' -printf 'Removing %P\n' -delete
+
+  echo "Stripping build tools..."
+  local file
+  while read -rd '' file; do
+    case "$(file -Sib "$file")" in
+      application/x-sharedlib\;*)      # Libraries (.so)
+        strip -v $STRIP_SHARED "$file" ;;
+      application/x-archive\;*)        # Libraries (.a)
+        strip -v $STRIP_STATIC "$file" ;;
+      application/x-executable\;*)     # Binaries
+        strip -v $STRIP_BINARIES "$file" ;;
+      application/x-pie-executable\;*) # Relocatable binaries
+        strip -v $STRIP_SHARED "$file" ;;
+    esac
+  done < <(find "$builddir" -type f -perm -u+x ! -name vmlinux -print0)
+
+  echo "Stripping vmlinux..."
+  strip -v $STRIP_STATIC "$builddir/vmlinux"
+
+  echo "Adding symlink..."
+  mkdir -p "$pkgdir/usr/src"
+  ln -sr "$builddir" "$pkgdir/usr/src/$pkgbase"
+}
+
+pkgname=(
+  "$pkgbase"
+  "$pkgbase-headers"
+)
+for _p in "${pkgname[@]}"; do
+  eval "package_$_p() {
+    $(declare -f "_package${_p#$pkgbase}")
+    _package${_p#$pkgbase}
+  }"
+done
+
+# vim:set ts=8 sts=2 sw=2 et:

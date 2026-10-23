@@ -6,6 +6,8 @@
 #   scripts/build.sh linux --install      ... and install it on this machine too
 #   scripts/build.sh linux --no-kitchen   only build, leave woxKitchen alone
 #   scripts/build.sh linux --force        rebuild a version woxKitchen already has
+#   scripts/build.sh linux-7.3            Linux 7.3 (own package, lean config), from ~/Sources
+#   scripts/build.sh linux-7.3 --config-only  only make + check the 7.3 config (no compile)
 #   scripts/build.sh calamares-wiamox     the installer config (git submodule)
 #   scripts/build.sh woxed                the WiamOX Editor (git submodule)
 #   scripts/build.sh ai-center            the WiamOX AI Center launcher (git submodule)
@@ -27,7 +29,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 usage() {
-  sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,23p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -37,20 +39,26 @@ install=0
 kitchen=1
 force=0
 libcheck=1
+config_only=0
 for arg in "$@"; do
   case $arg in
     --install) install=1 ;;
     --no-kitchen) kitchen=0 ;;
     --force) force=1 ;;
     --no-libcheck) libcheck=0 ;;
+    --config-only) config_only=1 ;;
     -h|--help) usage ;;
     -*) echo "Unknown option: $arg" >&2; usage 1 ;;
     *) [[ -z $pkg ]] || usage 1; pkg=${arg%/} ;;
   esac
 done
 [[ -n $pkg ]] || usage 1
-[[ $EUID -ne 0 ]] || die "Run this as your normal user; makepkg refuses to run as root."
-command -v makepkg >/dev/null || die "makepkg not found (this needs an Arch-based system)."
+(( !config_only )) || [[ $pkg == linux-7.3 ]] || die "--config-only only works with linux-7.3."
+if (( !config_only )); then
+  [[ $EUID -ne 0 ]] || die "Run this as your normal user; makepkg refuses to run as root."
+  command -v makepkg >/dev/null || die "makepkg not found (this needs an Arch-based system)."
+fi
+(( !config_only )) || kitchen=0
 
 # Packages built straight from the AUR. Their recipes are not part of this
 # repo: they are cloned into aur/<name> and updated on every build.
@@ -79,11 +87,12 @@ load_conf
 clean_build_env
 export WIAMOX_KERNEL_SRC=${WIAMOX_KERNEL_SRC-} WIAMOX_KERNEL_CONFIG=${WIAMOX_KERNEL_CONFIG:-fragments}
 export WIAMOX_COREUTILS_SRC=${WIAMOX_COREUTILS_SRC-}
+export WIAMOX_KERNEL73_SRC=${WIAMOX_KERNEL73_SRC-} WIAMOX_KERNEL73_CONFIG=${WIAMOX_KERNEL73_CONFIG:-fragments}
 export BUILDDIR=${WIAMOX_BUILDDIR:-$ROOT/build}
 # Kept out of the package folders, so the submodules stay clean. SRCDEST
 # holds downloaded sources (woxed: Neovim, ~33 plugin repos) between builds.
 export PKGDEST=$ROOT/out LOGDEST=$BUILDDIR/logs SRCDEST=${SRCDEST:-$BUILDDIR/sources}
-mkdir -p "$PKGDEST" "$LOGDEST" "$SRCDEST"
+mkdir -p "$PKGDEST" "$LOGDEST" "$SRCDEST" "$ROOT/build"
 if [[ -z ${MAKEFLAGS-} ]]; then
   MAKEFLAGS="-j$(nproc)"
   export MAKEFLAGS
@@ -95,6 +104,40 @@ if (( kitchen )); then
   command -v repo-add >/dev/null || die "repo-add not found (pacman package)."
   # Stops now, not after an hour of compiling, if woxKitchen has two databases.
   kitchen_db >/dev/null
+fi
+
+# --- Linux 7.3: own package, source found in ~/Sources ------------------------
+if [[ $pkg == linux-7.3 ]]; then
+  # shellcheck source=../linux-7.3/find-src.sh
+  source "$pkgdir/find-src.sh"
+  found_src=$(_wox_find_kernel73_src "$WIAMOX_KERNEL73_SRC") ||
+    die "No Linux 7.3 source tree found. WIAMOX_KERNEL73_SRC='${WIAMOX_KERNEL73_SRC}' (set it in local.conf)
+    must be the folder with the top-level Makefile, or a folder that contains linux-7.3*."
+  export WIAMOX_KERNEL73_SRC=$found_src
+  src_ver=$(awk -F' *= *' '
+    $1 == "VERSION"      { v = $2 }
+    $1 == "PATCHLEVEL"   { p = $2 }
+    $1 == "SUBLEVEL"     { s = $2 }
+    $1 == "EXTRAVERSION" { e = $2; exit }
+    END { printf "%s.%s.%s%s\n", v, p, s, e }
+  ' "$WIAMOX_KERNEL73_SRC/Makefile" | sed 's/-/./g')
+  [[ $src_ver == 7.3.* ]] ||
+    die "$WIAMOX_KERNEL73_SRC is Linux $src_ver, not 7.3. (For 7.2 use: build.sh linux)"
+  msg "Kernel source: $WIAMOX_KERNEL73_SRC (Linux $src_ver)"
+
+  if (( config_only )); then
+    # Same steps as prepare() in linux-7.3/PKGBUILD, on a throw-away copy;
+    # your source tree is not touched.
+    tmp=$(mktemp -d "$BUILDDIR/config-only.XXXXXX")
+    trap 'rm -rf "$tmp"' EXIT
+    msg "Copying the tree to $tmp ..."
+    tar -C "$WIAMOX_KERNEL73_SRC" --exclude=.git --exclude='*.o' --exclude='*.ko' -cf - . | tar -C "$tmp" -xf -
+    (cd "$tmp" && make -s mrproper &&
+      MERGE_LOG=$tmp/merge_config.log "$pkgdir/make-config.sh" "$pkgdir" "$WIAMOX_KERNEL73_CONFIG" &&
+      cp .config "$ROOT/build/linux-7.3.config")
+    msg "Config written to $ROOT/build/linux-7.3.config (no kernel was compiled)."
+    exit 0
+  fi
 fi
 
 # --- kernel checks, before spending an hour compiling ------------------------
@@ -119,6 +162,23 @@ if [[ $pkg == linux ]]; then
   if (( kitchen && !force )) &&
      compgen -G "$WIAMOX_KITCHEN/linux-$src_ver-$rel-x86_64.pkg.tar.*" >/dev/null; then
     die "woxKitchen already has linux $src_ver-$rel. Bump pkgrel in linux/PKGBUILD
+    (otherwise pacman will not update installed systems), or use --force to replace it."
+  fi
+
+  free_gb=$(( $(df -Pk "$BUILDDIR" | awk 'NR==2 { print $4 }') / 1024 / 1024 ))
+  (( free_gb >= 30 )) ||
+    warn "Only ${free_gb} GB free in $BUILDDIR; a kernel build with debug info needs about 30 GB."
+
+elif [[ $pkg == linux-7.3 ]]; then
+  pb_ver=$(sed -n 's/^pkgver=//p' "$pkgdir/PKGBUILD")
+  pb_rel=$(sed -n 's/^pkgrel=//p' "$pkgdir/PKGBUILD")
+  # makepkg resets pkgrel to 1 when pkgver() finds a new kernel version.
+  [[ $src_ver == "$pb_ver" ]] && rel=$pb_rel || rel=1
+  msg "Will build: linux-7.3 $src_ver-$rel (config: $WIAMOX_KERNEL73_CONFIG)"
+
+  if (( kitchen && !force )) &&
+     compgen -G "$WIAMOX_KITCHEN/linux-7.3-$src_ver-$rel-x86_64.pkg.tar.*" >/dev/null; then
+    die "woxKitchen already has linux-7.3 $src_ver-$rel. Bump pkgrel in linux-7.3/PKGBUILD
     (otherwise pacman will not update installed systems), or use --force to replace it."
   fi
 
