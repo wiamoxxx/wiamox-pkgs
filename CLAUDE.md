@@ -98,6 +98,10 @@ something important. User-facing details are in README.md.
   build machine: `gh auth login` + `gh auth setup-git`, **or** (current build
   machine) `git config --global url."git@github.com:wiamoxxx/".insteadOf "https://github.com/wiamoxxx/"`
   with the SSH key.
+- **/tmp is a RAM disk** (tmpfs, half the RAM = 7.7 GB here): uv's wheel
+  unpacking (comfyui-impact-pack failed) and check_libs ran out of space with
+  ComfyUI. build.sh now sets `TMPDIR=$BUILDDIR/tmp`; check_libs ignores
+  libraries that resolve inside its own unpack folder (under /home now).
 - `--syncdeps` asks pacman "Proceed with installation?"; without a terminal
   (e.g. Claude running build.sh) that fails with "Could not resolve all
   dependencies". Pre-install the deps with `pacman -S --needed --noconfirm --asdeps …` first.
@@ -159,3 +163,16 @@ something important. User-facing details are in README.md.
   incl. `unshare -rn` passes in the box). Still to rebuild: wiamox-opencode,
   wiamox-llama.cpp-cuda, wiamox-yue2.cpp-cuda, wiamox-comfyui-cuda, ai-center,
   wiamox-wox, coreutils + linux (their source trees on disk were lost with the format).
+  Later the same day also built: wiamox-opencode 1.18.35-2, wiamox-wox 0.1.0-1,
+  ai-center 0.7.0-1, wiamox-llama.cpp-cuda 11722-1, wiamox-yue2.cpp-cuda
+  20261016-1 and the **first real wiamox-comfyui-cuda 0.38.2-1** (4.4 GB; all 12
+  nodes install, CPU smoke test passed; not yet run on the GPU). Portability
+  checked with objdump: calamares, woxed parsers, llama.cpp and yue2 contain no
+  AVX/AVX-512 at all (ggml `GGML_AVX*/FMA/F16C = OFF`, SSE2 baseline; the
+  "runtime CPU feature dispatch" comment in the llama.cpp PKGBUILD is not what
+  this config does: that needs `GGML_BACKEND_DL=ON` + `GGML_CPU_ALL_VARIANTS=ON`).
+  Still missing: coreutils + linux.
+- ComfyUI library check: only optional plugins miss libraries (ROCm hip backend,
+  onnxruntime TensorRT, nvshmem MPI/IB/UCX transports, cufile RDMA, numba TBB,
+  Python `_crypt`/libcrypt.so.1); added with `repo-add -R` by hand after
+  reviewing that list (= `--no-libcheck`). Re-check the list on version bumps.

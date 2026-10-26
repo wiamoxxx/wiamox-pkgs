@@ -83,7 +83,10 @@ export BUILDDIR=${WIAMOX_BUILDDIR:-$ROOT/build}
 # Kept out of the package folders, so the submodules stay clean. SRCDEST
 # holds downloaded sources (woxed: Neovim, ~33 plugin repos) between builds.
 export PKGDEST=$ROOT/out LOGDEST=$BUILDDIR/logs SRCDEST=${SRCDEST:-$BUILDDIR/sources}
-mkdir -p "$PKGDEST" "$LOGDEST" "$SRCDEST"
+# Temp files on disk, not in /tmp: /tmp is often a RAM disk (half the RAM),
+# too small for ComfyUI's wheels (uv) and for unpacking it in check_libs.
+export TMPDIR=$BUILDDIR/tmp
+mkdir -p "$PKGDEST" "$LOGDEST" "$SRCDEST" "$TMPDIR"
 if [[ -z ${MAKEFLAGS-} ]]; then
   MAKEFLAGS="-j$(nproc)"
   export MAKEFLAGS

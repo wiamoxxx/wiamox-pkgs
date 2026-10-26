@@ -147,7 +147,9 @@ check_libs() {
     # ldd exits non-zero both for missing libraries and for files it can't
     # handle (static programs, other architectures); only its output counts.
     out=$(LD_LIBRARY_PATH=$lib_path ldd -- "$f" 2>/dev/null || true)
-    bad=$(grep -E 'not found|=> /home/' <<<"$out" || true)
+    # Libraries from the unpacked package itself are fine, even when $tmp
+    # is under /home (TMPDIR = the build folder).
+    bad=$(grep -E 'not found|=> /home/' <<<"$out" | grep -vF "=> $tmp/" || true)
     [[ -n $bad ]] || continue
     rel=${f#"$tmp"}
     echo "==> $rel:" >&2
