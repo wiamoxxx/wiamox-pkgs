@@ -186,7 +186,10 @@ fi
 # installed, because the library check below needs them. A package
 # without makedepends (calamares-wiamox: only config files) needs nothing
 # to build, so its depends (calamares, grub, ...) are not installed here.
-if (cd "$pkgdir" && makepkg --printsrcinfo) | grep -q '^[[:space:]]*makedepends = '; then
+# Read .SRCINFO first: `makepkg | grep -q` under pipefail fails whenever grep
+# quits before makepkg is done writing (SIGPIPE), and silently gave --nodeps.
+srcinfo=$(cd "$pkgdir" && makepkg --printsrcinfo)
+if grep -q '^[[:space:]]*makedepends = ' <<<"$srcinfo"; then
   deps=--syncdeps
 else
   deps=--nodeps

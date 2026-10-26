@@ -88,10 +88,19 @@ something important. User-facing details are in README.md.
   `LC_TIME/coreutils.mo` links (Arch adds them only because it builds from
   git); the PKGBUILD skips existing ones. `./configure` refuses to run as
   root (makepkg never runs as root; in tests use `FORCE_UNSAFE_CONFIGURE=1`).
+- **`cmd | grep -q` under `set -o pipefail`** fails whenever grep quits before
+  cmd is done writing (SIGPIPE). build.sh's makedepends test did that and
+  silently built calamares with `--nodeps` (`cmake: command not found`,
+  26.10.2026). Read the output into a variable first, then grep it.
 - `ldd` exits non-zero exactly when a library is missing — never use its
   exit status to skip files in checks; only its output counts.
 - The private GitHub repos (incl. the submodules) need a login on the
-  build machine: `gh auth login` + `gh auth setup-git`.
+  build machine: `gh auth login` + `gh auth setup-git`, **or** (current build
+  machine) `git config --global url."git@github.com:wiamoxxx/".insteadOf "https://github.com/wiamoxxx/"`
+  with the SSH key.
+- `--syncdeps` asks pacman "Proceed with installation?"; without a terminal
+  (e.g. Claude running build.sh) that fails with "Could not resolve all
+  dependencies". Pre-install the deps with `pacman -S --needed --noconfirm --asdeps …` first.
 
 ## 6. Status (keep updated)
 
@@ -139,3 +148,14 @@ something important. User-facing details are in README.md.
 - Keep README.md (user-facing, English) and this file in sync.
 
 - 22.10.2026: added `wiamox-comfyui-cuda` 0.38.2 (ComfyUI is now native, no Podman; `ai-center` 0.7.0 dropped the container, the image bundles and `WIAMOX_AI_CENTER_IMAGES`). Written and the mechanics tested in Claude's environment against a stand-in ComfyUI (uv standalone Python relocated into the package dir, `check()` smoke test, wrapper, AI Center start flow, node sync); **not built with the real ComfyUI/PyTorch** (no GitHub/PyTorch index access there): first real build on the build machine is the test. Not yet in the Calamares "AI" bundle (`calamares-wiamox` netinstall.conf).
+
+- **26.10.2026 — new build machine** (CachyOS host, old one formatted, woxKitchen
+  rebuilt from empty). Packages are built in the **Arch build box** (distrobox
+  `wiamox-build`, Arch + testing + multilib, shared home; setup in
+  `/home/lol/Projects/BUILD-MACHINE.md`), so they link against the same libraries
+  as the ISO and not CachyOS's `-march=native`/v3 builds. In woxKitchen now:
+  `calamares-wiamox` 1.7.5-1, `calamares` 3.4.2-2 (+ `-debug`; Found Python3
+  /usr/bin/python3.14, 3.14.9), `woxed` 1.0.0-1 (submodule `0bbd0c3`, check()
+  incl. `unshare -rn` passes in the box). Still to rebuild: wiamox-opencode,
+  wiamox-llama.cpp-cuda, wiamox-yue2.cpp-cuda, wiamox-comfyui-cuda, ai-center,
+  wiamox-wox, coreutils + linux (their source trees on disk were lost with the format).
