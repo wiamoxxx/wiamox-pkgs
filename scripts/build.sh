@@ -17,6 +17,7 @@
 #   scripts/build.sh calamares            the installer program, from the AUR
 #   scripts/build.sh coreutils            coreutils from your source tree
 #   scripts/build.sh <pkg> --no-libcheck  skip the shared-library check
+#   scripts/build.sh <pkg> --skip-existing  woxKitchen has this version: say so and stop (exit 0)
 #
 # Packages go to out/, logs to build/logs/. Settings come from local.conf
 # in the repo root (copy local.conf.example); WIAMOX_* variables set in the
@@ -27,7 +28,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 usage() {
-  sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,/^set -euo pipefail/{/^#/p}' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -37,12 +38,14 @@ install=0
 kitchen=1
 force=0
 libcheck=1
+skip_existing=0
 for arg in "$@"; do
   case $arg in
     --install) install=1 ;;
     --no-kitchen) kitchen=0 ;;
     --force) force=1 ;;
     --no-libcheck) libcheck=0 ;;
+    --skip-existing) skip_existing=1 ;;
     -h|--help) usage ;;
     -*) echo "Unknown option: $arg" >&2; usage 1 ;;
     *) [[ -z $pkg ]] || usage 1; pkg=${arg%/} ;;
@@ -51,6 +54,16 @@ done
 [[ -n $pkg ]] || usage 1
 [[ $EUID -ne 0 ]] || die "Run this as your normal user; makepkg refuses to run as root."
 command -v makepkg >/dev/null || die "makepkg not found (this needs an Arch-based system)."
+
+# The version is already in woxKitchen: stop with $2, or with --skip-existing
+# just say so and exit 0 (wiamox-build all goes on with the next package).
+already_in_kitchen() {
+  if (( skip_existing )); then
+    msg "woxKitchen already has $1; skipped."
+    exit 0
+  fi
+  die "$2"
+}
 
 # Packages built straight from the AUR. Their recipes are not part of this
 # repo: they are cloned into aur/<name> and updated on every build.
@@ -121,7 +134,7 @@ if [[ $pkg == linux ]]; then
 
   if (( kitchen && !force )) &&
      compgen -G "$WIAMOX_KITCHEN/linux-$src_ver-$rel-x86_64.pkg.tar.*" >/dev/null; then
-    die "woxKitchen already has linux $src_ver-$rel. Bump pkgrel in linux/PKGBUILD
+    already_in_kitchen "linux $src_ver-$rel" "woxKitchen already has linux $src_ver-$rel. Bump pkgrel in linux/PKGBUILD
     (otherwise pacman will not update installed systems), or use --force to replace it."
   fi
 
@@ -156,7 +169,7 @@ elif [[ $pkg == coreutils ]]; then
 
   if (( kitchen && !force )) &&
      compgen -G "$WIAMOX_KITCHEN/coreutils-$src_ver-$rel-x86_64.pkg.tar.*" >/dev/null; then
-    die "woxKitchen already has coreutils $src_ver-$rel. Bump pkgrel in coreutils/PKGBUILD
+    already_in_kitchen "coreutils $src_ver-$rel" "woxKitchen already has coreutils $src_ver-$rel. Bump pkgrel in coreutils/PKGBUILD
     (otherwise pacman will not update installed systems), or use --force to replace it."
   fi
 else
@@ -171,10 +184,10 @@ else
     msg "Will build: $name"
     if (( kitchen && !force )) && compgen -G "$WIAMOX_KITCHEN/$name.pkg.tar.*" >/dev/null; then
       if (( is_aur )); then
-        die "woxKitchen already has $name. To rebuild the same AUR version (e.g. after a
+        already_in_kitchen "$name" "woxKitchen already has $name. To rebuild the same AUR version (e.g. after a
     Python update in Arch), use --force to replace it."
       fi
-      die "woxKitchen already has $name. Bump pkgver or pkgrel in $pkg/PKGBUILD
+      already_in_kitchen "$name" "woxKitchen already has $name. Bump pkgver or pkgrel in $pkg/PKGBUILD
     (otherwise pacman will not update installed systems), or use --force to replace it."
     fi
   done

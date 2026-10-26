@@ -54,7 +54,9 @@ something important. User-facing details are in README.md.
   `recipe_update` (clone/update a recipe repo, show diff without
   `.SRCINFO`, optional confirmation), `check_libs` (ldd over every ELF in
   the built packages; libraries shipped in the package count as present).
-- `build.sh <pkg> [--install] [--no-kitchen] [--force] [--no-libcheck]`:
+- `build.sh <pkg> [--install] [--no-kitchen] [--force] [--no-libcheck] [--skip-existing]`
+  (`--skip-existing`: version already in woxKitchen → message, exit 0; used by
+  wiamox-forge's `wiamox-build all`, 27.10.2026):
   fetch submodule / AUR recipe → load conf → clean env → per-package
   pre-checks (kernel: version + 30 GB; coreutils: tree + version) → version
   exists in woxKitchen? → `makepkg --cleanbuild --syncdeps --force --log`

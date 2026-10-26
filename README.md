@@ -53,7 +53,12 @@ $EDITOR local.conf        # WIAMOX_KITCHEN, WIAMOX_KERNEL_SRC, WIAMOX_COREUTILS_
   otherwise cloning the submodules fails with "Password authentication
   is not supported".
 - Build machine: Arch-based, with `base-devel` installed. What each
-  package needs to build is installed by makepkg when missing.
+  package needs to build is installed by makepkg when missing. On a
+  non-Arch host (CachyOS, EndeavourOS, …) build in the WiamOX build box
+  instead: [wiamox-forge](https://github.com/wiamoxxx/wiamox-forge)
+  (`wiamox-forge load <box file>`, then `wiamox-build <pkg>` or
+  `wiamox-build all`; `all` passes `--skip-existing`, so versions
+  woxKitchen already has are skipped instead of stopping the run).
 - Space: about **30 GB** free where it compiles (`build/` here, or
   `WIAMOX_BUILDDIR`) for the kernel, because its config has full debug
   info (needed for BTF). The other packages need far less.
