@@ -8,7 +8,7 @@ something important. User-facing details are in README.md.
 ## 1. What wiamox-pkgs is
 
 - The **build workshop for WiamOX's own packages** (WiamOX = Arch-based
-  distro by **Wiam Khader**, admin@wiamox.com). It turns sources into
+  distro by **Wiam Khader**, Wiam@wiamox.com). It turns sources into
   `.pkg.tar.zst` files and adds them to **woxKitchen**, the local pacman
   repo on the build machine (`/home/lol/woxKitchen`, database name
   `custom`, listed as `[custom]` **before `[core]`** in woxclean1's
