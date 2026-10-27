@@ -19,7 +19,7 @@ esac
 """
 
 
-class WoxPackageCommands(unittest.TestCase):
+class WoxTestBase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         for name, body in (("sudo", FAKE_SUDO), ("pacman", FAKE_PACMAN)):
@@ -37,11 +37,16 @@ class WoxPackageCommands(unittest.TestCase):
                  WOX_TEST_LOG=self.log, **env)
         r = subprocess.run([sys.executable, WOX, *args], env=e, capture_output=True,
                            text=True, stdin=subprocess.DEVNULL)
-        calls = open(self.log).read().splitlines() if os.path.exists(self.log) else []
+        calls = []
+        if os.path.exists(self.log):
+            with open(self.log) as f:
+                calls = f.read().splitlines()
         # sudo logs itself and then runs pacman; keep only the pacman lines
         # unless the test asks for the sudo ones.
         return r, calls
 
+
+class WoxPackageCommands(WoxTestBase):
     def pacman_calls(self, calls):
         return [c for c in calls if c.startswith("pacman ")]
 
@@ -109,6 +114,71 @@ class WoxPackageCommands(unittest.TestCase):
         self.assertEqual(r.returncode, 0)
         self.assertIn("wox install", r.stdout)
         r, _ = self.wox("bogus")
+        self.assertEqual(r.returncode, 2)
+
+
+class WoxGpu(WoxTestBase):
+    """`wox gpu` against a fake sysfs (WOX_SYSFS)."""
+
+    def gpu(self, cards, *args):
+        sysfs = os.path.join(self.tmp.name, "sys")
+        base = os.path.join(sysfs, "bus/pci/devices")
+        os.makedirs(base, exist_ok=True)
+        for i, (vendor, device) in enumerate(cards):
+            d = os.path.join(base, f"0000:0{i}:00.0")
+            os.makedirs(d)
+            for name, value in (("class", "0x030000"), ("vendor", f"0x{vendor:04x}"),
+                                ("device", f"0x{device:04x}"), ("boot_vga", "1" if i == 0 else "0")):
+                with open(os.path.join(d, name), "w") as f:
+                    f.write(value + "\n")
+        return self.wox("gpu", *args, WOX_SYSFS=sysfs)
+
+    def recommend(self, *cards):
+        r, _ = self.gpu(cards, "--recommend")
+        return r.stdout.strip()
+
+    def test_branches(self):
+        cases = {
+            0x28A0: "new",      # RTX 4060 Laptop (Ada)
+            0x1F82: "new",      # GTX 1650 (Turing, lowest new generation)
+            0x1E04: "new",      # RTX 2080 Ti
+            0x1DB1: "legacy",   # Tesla V100 (Volta)
+            0x1C81: "legacy",   # GTX 1050 (Pascal)
+            0x1D01: "legacy",   # GT 1030 (Pascal)
+            0x1380: "legacy",   # GTX 750 Ti (Maxwell)
+            0x1340: "legacy",   # 830M (first Maxwell ID)
+            0x128B: "nouveau",  # GT 710 (Kepler)
+            0x1004: "nouveau",  # GTX 780 (Kepler)
+        }
+        for device, want in cases.items():
+            with self.subTest(device=hex(device)):
+                self.assertEqual(self.recommend((0x10DE, device)), want)
+                self.tearDown()
+                self.setUp()
+
+    def test_no_nvidia(self):
+        self.assertEqual(self.recommend(), "none")
+        self.tearDown(); self.setUp()
+        self.assertEqual(self.recommend((0x8086, 0xA7A8), (0x1002, 0x73DF)), "none")
+
+    def test_mixed_cards_pick_the_driver_for_both(self):
+        # 580 also runs Turing+, the 615 driver does not run Pascal
+        self.assertEqual(self.recommend((0x10DE, 0x1F08), (0x10DE, 0x1C81)), "legacy")
+        self.tearDown(); self.setUp()
+        self.assertEqual(self.recommend((0x10DE, 0x2204), (0x10DE, 0x1004)), "new")
+
+    def test_report_hybrid_tip(self):
+        r, _ = self.gpu([(0x8086, 0xA7A8), (0x10DE, 0x28A0)])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Recommended: NVIDIA 615 driver", r.stdout)
+        self.assertIn("prime-run", r.stdout)
+
+    def test_report_kepler(self):
+        r, _ = self.gpu([(0x10DE, 0x1004)])
+        self.assertIn("nouveau", r.stdout.split("Recommended:")[1].splitlines()[0])
+
+    def test_install_bad_mode(self):
+        r, _ = self.gpu([(0x10DE, 0x28A0)], "install", "bogus")
         self.assertEqual(r.returncode, 2)
 
 

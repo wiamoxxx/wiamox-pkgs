@@ -1,0 +1,14 @@
+# NVIDIA 580 legacy driver (closed kernel modules, chaotic-aur): Maxwell,
+# Pascal and Volta (GTX 750-1080, Titan V). Conflicts with new.packages,
+# so it is resolved and checked on its own by build-wiamox-repo.sh.
+nvidia-580xx-dkms
+nvidia-580xx-utils
+lib32-nvidia-580xx-utils
+opencl-nvidia-580xx
+nvidia-580xx-settings
+libxnvctrl-580xx
+libva-nvidia-driver
+nvidia-prime
+egl-wayland
+dkms
+linux-headers

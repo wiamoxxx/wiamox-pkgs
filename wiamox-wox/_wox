@@ -10,6 +10,7 @@ cmds=(
   'info:show package details'
   'list:explicitly installed packages'
   'clean:remove orphaned dependencies'
+  'gpu:graphics cards, driver and tips'
   'why:explain the last failed command'
   'help:show help'
 )
@@ -24,4 +25,6 @@ case $words[2] in
   remove|rm) compadd -- ${(f)"$(pacman -Qq 2>/dev/null)"} ;;
   info)      compadd -- ${(u)${(f)"$(pacman -Slq 2>/dev/null; pacman -Qq 2>/dev/null)"}} ;;
   why|diagnose) compadd -- -p --paste ;;
+  gpu) (( CURRENT == 3 )) && compadd -- install --recommend
+       (( CURRENT == 4 )) && [[ $words[3] == install ]] && compadd -- auto new legacy ;;
 esac

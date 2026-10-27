@@ -1,0 +1,14 @@
+# NVIDIA 615 driver (open kernel modules): Turing and newer
+# (GTX 16xx, RTX 20-50). Needed by the AI Center (CUDA 13).
+# One package per line; woxclean1's build-wiamox-repo.sh puts this set
+# (with all dependencies) into the offline [wiamox] repo.
+nvidia-open-dkms
+nvidia-utils
+lib32-nvidia-utils
+opencl-nvidia
+nvidia-settings
+libva-nvidia-driver
+nvidia-prime
+egl-wayland
+dkms
+linux-headers

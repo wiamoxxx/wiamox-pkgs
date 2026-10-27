@@ -1,15 +1,16 @@
 # Maintainer: Wiam Khader
 #
 # wox: WiamOX terminal helper. Package commands (`wox install/remove/update/
-# search/info/list/clean`, thin pacman wrappers) and `wox why` (alias `why`),
-# which explains the last failed command with the local llama.cpp model.
+# search/info/list/clean`, thin pacman wrappers), GPU detection and driver
+# tips (`wox gpu`) and `wox why` (alias `why`), which explains the last
+# failed command with the local llama.cpp model.
 # Plain Python (stdlib), the sources live next to this file. The shell hooks
 # are sourced from the skeleton .zshrc / .bashrc (woxclean1), before starship.
 
 pkgname=wiamox-wox
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
-pkgdesc='wox: short package commands and AI help for failed terminal commands (WiamOX)'
+pkgdesc='wox: package commands, GPU driver tips and AI help for failed terminal commands (WiamOX)'
 arch=(any)
 url='https://github.com/wiamoxxx'
 license=(MIT)

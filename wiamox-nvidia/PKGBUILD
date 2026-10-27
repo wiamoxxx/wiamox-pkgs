@@ -1,0 +1,54 @@
+# Maintainer: Wiam Khader
+#
+# wiamox-nvidia: picks and installs the NVIDIA driver that fits the card.
+# Used by the installer (calamares-wiamox "wiamox-nvidia" step, offline) and
+# later by `wox gpu install`. Detection is `wox gpu --recommend`
+# (wiamox-wox). The driver sets are new.packages (615, Turing+) and
+# legacy.packages (580, Maxwell/Pascal/Volta); woxclean1's
+# build-wiamox-repo.sh reads them from this package to fill the offline repo.
+#
+# wiamox-nvidia-new / wiamox-nvidia-legacy only drop a marker file: the
+# installer's "NVIDIA graphics" bundle ticks one of them to force a branch.
+# Real driver packages cannot be listed there, they conflict with each other.
+
+pkgbase=wiamox-nvidia
+pkgname=(wiamox-nvidia wiamox-nvidia-new wiamox-nvidia-legacy)
+pkgver=1.0.0
+pkgrel=1
+arch=(any)
+url='https://github.com/wiamoxxx'
+license=(MIT)
+source=(setup new.packages legacy.packages niri-vram.json test_setup.py)
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+check() {
+  bash -n setup
+  python test_setup.py
+}
+
+package_wiamox-nvidia() {
+  pkgdesc='Installs the NVIDIA driver that fits the card: 615 (Turing+) or 580 legacy (WiamOX)'
+  depends=(bash pacman 'wiamox-wox>=0.3.0')
+  backup=(etc/nvidia/nvidia-application-profiles-rc.d/50-wiamox-niri-vram.json)
+
+  install -Dm755 setup "$pkgdir/usr/lib/wiamox-nvidia/setup"
+  install -Dm644 -t "$pkgdir/usr/share/wiamox-nvidia" new.packages legacy.packages
+  # niri on NVIDIA keeps a large free-buffer pool per window (GBs of VRAM);
+  # this NVIDIA application profile turns it off (niri wiki, "Nvidia").
+  install -Dm644 niri-vram.json \
+    "$pkgdir/etc/nvidia/nvidia-application-profiles-rc.d/50-wiamox-niri-vram.json"
+}
+
+package_wiamox-nvidia-new() {
+  pkgdesc='Makes the WiamOX installer use the NVIDIA 615 driver (open kernel modules)'
+  depends=(wiamox-nvidia)
+  install -dm755 "$pkgdir/usr/share/wiamox-nvidia"
+  touch "$pkgdir/usr/share/wiamox-nvidia/force-new"
+}
+
+package_wiamox-nvidia-legacy() {
+  pkgdesc='Makes the WiamOX installer use the NVIDIA 580 legacy driver'
+  depends=(wiamox-nvidia)
+  install -dm755 "$pkgdir/usr/share/wiamox-nvidia"
+  touch "$pkgdir/usr/share/wiamox-nvidia/force-legacy"
+}

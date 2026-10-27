@@ -10,7 +10,8 @@
 #   scripts/build.sh woxed                the WiamOX Editor (git submodule)
 #   scripts/build.sh ai-center            the WiamOX AI Center launcher (git submodule)
 #   scripts/build.sh wiamox-opencode      OpenCode (offline build of the upstream binary)
-#   scripts/build.sh wiamox-wox           wox: package commands + wox why (explain failed commands, local AI)
+#   scripts/build.sh wiamox-wox           wox: package commands, wox gpu, wox why (explain failed commands, local AI)
+#   scripts/build.sh wiamox-nvidia        NVIDIA driver picker (615 / 580 legacy) for the installer and wox gpu
 #   scripts/build.sh wiamox-llama.cpp-cuda  llama.cpp / llama-server, CUDA build
 #   scripts/build.sh wiamox-yue2.cpp-cuda   yue2.cpp / yue-server (AI music), CUDA build
 #   scripts/build.sh wiamox-comfyui-cuda    ComfyUI with its own Python + PyTorch (offline), CUDA build

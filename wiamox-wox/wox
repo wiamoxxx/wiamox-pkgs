@@ -316,8 +316,177 @@ def cmd_clean(args):
     return run(sudo() + ["pacman", "-Rns"] + args + orphans)
 
 
+# GPU detection and tips (`wox gpu`). Reads sysfs only, so it works offline,
+# in the live session and in the installer's chroot. The NVIDIA driver
+# branch is chosen from the PCI device ID; the ranges follow NVIDIA's chip
+# generations:
+#   >= 0x1E00          Turing and newer (GTX 16xx, RTX 20-50) -> new 615 driver
+#   0x1340 - 0x1DFF    Maxwell, Pascal, Volta (GTX 750-1080, Titan V) -> legacy 580
+#   below 0x1340       Kepler and older -> nouveau (no maintained NVIDIA driver)
+
+SYSFS = os.environ.get("WOX_SYSFS", "/sys")
+NVIDIA_SETUP = "/usr/lib/wiamox-nvidia/setup"
+NVIDIA_STATE = "/var/lib/wiamox-nvidia/state"
+VENDORS = {0x10DE: "NVIDIA", 0x1002: "AMD", 0x8086: "Intel"}
+BRANCH_TEXT = {
+    "new": "NVIDIA 615 driver (open kernel modules)",
+    "legacy": "NVIDIA 580 legacy driver (closed)",
+    "nouveau": "nouveau (open source; no maintained NVIDIA driver for this card)",
+}
+
+
+def nvidia_branch(devid):
+    if devid >= 0x1E00:
+        return "new"
+    if devid >= 0x1340:
+        return "legacy"
+    return "nouveau"
+
+
+def read_sys(path):
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def gpus():
+    """Display controllers (PCI class 0x03xxxx) as dicts."""
+    base = os.path.join(SYSFS, "bus/pci/devices")
+    out = []
+    try:
+        addrs = sorted(os.listdir(base))
+    except OSError:
+        return out
+    for addr in addrs:
+        d = os.path.join(base, addr)
+        cls = read_sys(os.path.join(d, "class"))
+        if not cls.startswith("0x03"):
+            continue
+        try:
+            vendor = int(read_sys(os.path.join(d, "vendor")), 16)
+            device = int(read_sys(os.path.join(d, "device")), 16)
+        except ValueError:
+            continue
+        drv = os.path.join(d, "driver")
+        out.append({"addr": addr, "vendor": vendor, "device": device,
+                    "driver": os.path.basename(os.readlink(drv)) if os.path.islink(drv) else "",
+                    "boot_vga": read_sys(os.path.join(d, "boot_vga")) == "1"})
+    return out
+
+
+def recommend(found):
+    """One branch for all NVIDIA cards: the 580 driver also runs newer
+    cards, so a single older card decides."""
+    branches = {nvidia_branch(g["device"]) for g in found if g["vendor"] == 0x10DE}
+    if not branches:
+        return "none"
+    for b in ("legacy", "new"):
+        if b in branches:
+            return b
+    return "nouveau"
+
+
+def gpu_name(addr):
+    try:
+        r = subprocess.run(["lspci", "-s", addr], capture_output=True, text=True)
+        line = r.stdout.strip()
+        return line.split(": ", 1)[1] if ": " in line else ""
+    except OSError:
+        return ""
+
+
+def installed(*names):
+    r = subprocess.run(["pacman", "-Qq", *names], capture_output=True, text=True)
+    return r.stdout.split()
+
+
+def cmd_gpu(args):
+    found = gpus()
+    rec = recommend(found)
+    if args[:1] == ["--recommend"]:
+        print(rec)
+        return 0
+    if args[:1] == ["install"]:
+        mode = args[1] if len(args) > 1 else "auto"
+        if mode not in ("auto", "new", "legacy"):
+            print("wox gpu install: mode is auto, new or legacy")
+            return 2
+        if not os.access(NVIDIA_SETUP, os.X_OK):
+            print("wiamox-nvidia is not installed:  wox install wiamox-nvidia")
+            return 1
+        return run(sudo() + [NVIDIA_SETUP, "install", mode])
+    if args:
+        print("usage: wox gpu [--recommend | install [auto|new|legacy]]")
+        return 2
+
+    if not found:
+        print("No graphics card found in " + os.path.join(SYSFS, "bus/pci/devices") + ".")
+        return 1
+    print("Graphics cards:")
+    for g in found:
+        vendor = VENDORS.get(g["vendor"], f"{g['vendor']:04x}")
+        name = gpu_name(g["addr"]) or vendor
+        drv = g["driver"] or "no driver loaded"
+        print(f"  {g['addr']}  {name}")
+        print(f"      [{g['vendor']:04x}:{g['device']:04x}]  driver in use: {drv}"
+              + ("  (main display)" if g["boot_vga"] else ""))
+        if g["vendor"] == 0x10DE:
+            print(f"      fits: {BRANCH_TEXT[nvidia_branch(g['device'])]}")
+
+    nv = [g for g in found if g["vendor"] == 0x10DE]
+    if not nv:
+        print("\nNo NVIDIA card: nothing to install, AMD and Intel use the open Mesa drivers.")
+        return 0
+
+    pkgs = installed("nvidia-open-dkms", "nvidia-580xx-dkms", "nvidia-utils", "nvidia-580xx-utils",
+                     "lib32-nvidia-utils", "lib32-nvidia-580xx-utils", "linux-headers", "dkms")
+    # The loaded module tells the truth; packages only when none is loaded
+    # (other distros ship prebuilt module packages instead of DKMS).
+    version = read_sys(os.path.join(SYSFS, "module/nvidia/version"))
+    if version:
+        have = "legacy" if version.split(".")[0] == "580" else "new"
+    else:
+        have = "new" if "nvidia-open-dkms" in pkgs else "legacy" if "nvidia-580xx-dkms" in pkgs else "nouveau"
+    print(f"\nRecommended: {BRANCH_TEXT[rec]}")
+    print(f"In use:      {BRANCH_TEXT[have]}" + (f"  (module {version})" if version else ""))
+    if pkgs:
+        print("             " + " ".join(pkgs))
+    loaded = sorted(m for m in ("nvidia", "nvidia_drm", "nvidia_modeset", "nvidia_uvm", "nouveau")
+                    if os.path.isdir(os.path.join(SYSFS, "module", m)))
+    print("Loaded:      " + (" ".join(loaded) or "no NVIDIA or nouveau module"))
+    modeset = read_sys(os.path.join(SYSFS, "module/nvidia_drm/parameters/modeset"))
+    if modeset:
+        print(f"KMS:         nvidia_drm.modeset={modeset}")
+    state = read_sys(NVIDIA_STATE)
+    if state:
+        print("Installer:   " + state.replace("\n", "\n             "))
+
+    print("\nTips:")
+    if have != rec:
+        if rec == "nouveau":
+            print("  - This card is older than Maxwell (GTX 600/700 or older). NVIDIA no longer\n"
+                  "    maintains a driver for it; WiamOX uses nouveau. Remove the NVIDIA driver:\n"
+                  "    wox remove " + " ".join(p for p in pkgs if "nvidia" in p))
+        else:
+            print(f"  - Switch to the recommended driver:  wox gpu install   (needs a package repo)")
+    if any(g["vendor"] != 0x10DE for g in found):
+        print("  - Hybrid laptop: the desktop runs on the integrated GPU. Start a game or app on\n"
+              "    the NVIDIA card with:  prime-run <app>   (Steam: prime-run %command%)")
+    if rec != "new" and installed("cuda", "ai-center"):
+        print("  - The AI Center (CUDA 13) needs an RTX 20 / GTX 16 or newer card; this one is too old.")
+    print("  - Black screen after an update: in the boot menu press 'e', add  nomodeset  to the\n"
+          "    linux line, boot, then run  wox gpu  and  wox gpu install.\n"
+          "  - Driver check:  nvidia-smi   Module build:  dkms status   Log:  journalctl -b -k | grep -i nvidia\n"
+          "  - Suspend/resume problems: the nvidia-suspend, -hibernate and -resume services must be enabled.\n"
+          "  - 32-bit games (Steam) need lib32-nvidia-utils (legacy: lib32-nvidia-580xx-utils).")
+    return 0
+
+
 COMMANDS = {
     "why": cmd_why, "diagnose": cmd_why,
+    "gpu": cmd_gpu,
     "install": cmd_install, "i": cmd_install,
     "remove": cmd_remove, "rm": cmd_remove,
     "update": cmd_update, "up": cmd_update,
@@ -338,6 +507,10 @@ Packages:
   wox info <pkg...>      show package details             pacman -Qi / -Si
   wox list               explicitly installed packages    pacman -Qe
   wox clean              remove orphaned dependencies     pacman -Rns $(pacman -Qdtq)
+
+Hardware:
+  wox gpu                graphics cards, recommended/installed driver, tips
+  wox gpu install        install the right NVIDIA driver (auto, new or legacy)
 
 Errors:
   wox why            explain the last failed command (alias: why, wox diagnose)
