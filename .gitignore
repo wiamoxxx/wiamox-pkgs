@@ -11,3 +11,6 @@
 
 # AUR recipes cloned by scripts/build.sh
 /aur/
+
+# Python bytecode
+__pycache__/
