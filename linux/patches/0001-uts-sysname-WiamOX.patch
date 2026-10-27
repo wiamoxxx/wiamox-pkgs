@@ -1,0 +1,21 @@
+From: Wiam Khader <Wiam@wiamox.com>
+Subject: [PATCH] uts: report WiamOX as the system name (uname -s)
+
+UTS_SYSNAME is what uname() returns as sysname. Accepted cost (see
+CLAUDE.md, Decisions): autotools config.guess and code that checks
+uname -s / platform.system() == "Linux" take their non-Linux path.
+/proc/version still starts with "Linux version" (init/version-timestamp.c).
+
+Made against linux 7.3 (kernel.org tarball).
+---
+--- a/include/linux/uts.h
++++ b/include/linux/uts.h
+@@ -6,7 +6,7 @@
+  * Defines for what uname() should return 
+  */
+ #ifndef UTS_SYSNAME
+-#define UTS_SYSNAME "Linux"
++#define UTS_SYSNAME "WiamOX"
+ #endif
+ 
+ #ifndef UTS_NODENAME
