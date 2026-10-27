@@ -21,7 +21,7 @@
 # will not update the installed kernel.
 
 pkgbase=linux
-pkgver=7.2.8
+pkgver=7.3.0
 pkgrel=1
 pkgdesc='WiamOX'
 url='https://github.com/wiamoxxx/wiamox-pkgs'
