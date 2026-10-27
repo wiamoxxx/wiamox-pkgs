@@ -30,7 +30,7 @@ _wox_precmd() {
     c=${c:0:500}
     _wox_cmd=
     case $c in
-      "wox "*|wox|why|why\ *) return $rc ;;
+      wox|"wox why"*|"wox diagnose"*|why|"why "*) return $rc ;;
     esac
     (( _wox_seq++ ))
     print -r -- $_wox_seq >| "$_wox_dir/$$.seq"

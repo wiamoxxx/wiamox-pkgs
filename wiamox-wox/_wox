@@ -1,0 +1,27 @@
+#compdef wox
+# zsh completion for wox (WiamOX terminal helper).
+
+local -a cmds
+cmds=(
+  'install:install packages (sudo pacman -Sy)'
+  'remove:remove packages with unused deps (sudo pacman -Rns)'
+  'update:update the whole system (sudo pacman -Syu)'
+  'search:search the repos (pacman -Ss)'
+  'info:show package details'
+  'list:explicitly installed packages'
+  'clean:remove orphaned dependencies'
+  'why:explain the last failed command'
+  'help:show help'
+)
+
+if (( CURRENT == 2 )); then
+  _describe -t commands 'wox command' cmds
+  return
+fi
+
+case $words[2] in
+  install|i) compadd -- ${(f)"$(pacman -Slq 2>/dev/null)"} ;;
+  remove|rm) compadd -- ${(f)"$(pacman -Qq 2>/dev/null)"} ;;
+  info)      compadd -- ${(u)${(f)"$(pacman -Slq 2>/dev/null; pacman -Qq 2>/dev/null)"}} ;;
+  why|diagnose) compadd -- -p --paste ;;
+esac

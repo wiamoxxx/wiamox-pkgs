@@ -30,7 +30,7 @@ _wox_precmd() {
     c=${c#"${c%%[![:space:]]*}"}
     c=${c//$'\t'/ }; c=${c//$'\n'/ }; c=${c:0:500}
     case $c in
-      "wox "*|wox|why|why\ *) return $rc ;;
+      wox|"wox why"*|"wox diagnose"*|why|"why "*) return $rc ;;
     esac
     _wox_seq=$((_wox_seq + 1))
     printf '%s\n' "$_wox_seq" >"$_wox_dir/$$.seq"

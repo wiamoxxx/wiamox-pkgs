@@ -248,21 +248,110 @@ def cmd_why(args):
     return explain(cmd, out, entry["rc"] if entry else None)
 
 
+# Package commands: thin pacman wrappers. The real command is printed first,
+# so users learn pacman while they use wox. Extra flags are passed through.
+
+def sudo():
+    return [] if os.geteuid() == 0 else ["sudo"]
+
+
+def run(cmd):
+    dim, off = ("\033[2m", "\033[0m") if sys.stdout.isatty() else ("", "")
+    print(f"{dim}-> {' '.join(cmd)}{off}", flush=True)
+    try:
+        return subprocess.run(cmd).returncode
+    except FileNotFoundError as e:
+        print(f"wox: {e.filename} not found")
+        return 127
+
+
+def need_args(args, verb, what="package"):
+    if args:
+        return True
+    print(f"wox {verb}: name at least one {what}, e.g.  wox {verb} firefox")
+    return False
+
+
+def is_installed(pkg):
+    return subprocess.run(["pacman", "-Qq", pkg], stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL).returncode == 0
+
+
+def cmd_install(args):
+    return run(sudo() + ["pacman", "-Sy"] + args) if need_args(args, "install") else 2
+
+
+def cmd_remove(args):
+    return run(sudo() + ["pacman", "-Rns"] + args) if need_args(args, "remove") else 2
+
+
+def cmd_update(args):
+    return run(sudo() + ["pacman", "-Syu"] + args)
+
+
+def cmd_search(args):
+    return run(["pacman", "-Ss"] + args) if need_args(args, "search", "search term") else 2
+
+
+def cmd_info(args):
+    if not need_args(args, "info"):
+        return 2
+    rc = 0
+    for pkg in args:
+        rc = run(["pacman", "-Qi" if is_installed(pkg) else "-Si", pkg]) or rc
+    return rc
+
+
+def cmd_list(args):
+    return run(["pacman", "-Qe"] + args)
+
+
+def cmd_clean(args):
+    r = subprocess.run(["pacman", "-Qdtq"], capture_output=True, text=True)
+    orphans = r.stdout.split()
+    if not orphans:
+        print("No orphans: every installed dependency is still needed.")
+        return 0
+    print(f"Orphans (installed as dependency, no longer needed): {' '.join(orphans)}")
+    return run(sudo() + ["pacman", "-Rns"] + args + orphans)
+
+
+COMMANDS = {
+    "why": cmd_why, "diagnose": cmd_why,
+    "install": cmd_install, "i": cmd_install,
+    "remove": cmd_remove, "rm": cmd_remove,
+    "update": cmd_update, "up": cmd_update,
+    "search": cmd_search, "s": cmd_search,
+    "info": cmd_info,
+    "list": cmd_list,
+    "clean": cmd_clean,
+}
+
+
 HELP = """wox - WiamOX terminal helper
 
+Packages:
+  wox install <pkg...>   install packages      (wox i)   sudo pacman -Sy
+  wox remove <pkg...>    remove with unused deps (wox rm) sudo pacman -Rns
+  wox update             update the whole system (wox up) sudo pacman -Syu
+  wox search <term>      search the repos       (wox s)   pacman -Ss
+  wox info <pkg...>      show package details             pacman -Qi / -Si
+  wox list               explicitly installed packages    pacman -Qe
+  wox clean              remove orphaned dependencies     pacman -Rns $(pacman -Qdtq)
+
+Errors:
   wox why            explain the last failed command (alias: why, wox diagnose)
   wox why -p         paste an error text instead
   some-cmd 2>&1 | wox why     explain piped output
-
-Needs the local AI: start the AI Center and the llama.cpp server first."""
+  (wox why needs the local AI: start the AI Center and the llama.cpp server first.)"""
 
 
 def main(argv):
     if len(argv) < 2 or argv[1] in ("-h", "--help", "help"):
         print(HELP)
         return 0
-    if argv[1] in ("why", "diagnose"):
-        return cmd_why(argv[2:])
+    if argv[1] in COMMANDS:
+        return COMMANDS[argv[1]](argv[2:])
     print(f"wox: unknown command '{argv[1]}'\n\n{HELP}")
     return 2
 

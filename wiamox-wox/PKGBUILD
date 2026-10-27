@@ -1,24 +1,31 @@
 # Maintainer: Wiam Khader
 #
-# wox: WiamOX terminal helper. `wox why` (alias `why`) explains the last
-# failed command with the local llama.cpp model. Plain Python (stdlib), the
-# sources live next to this file. The shell hooks are sourced from the
-# skeleton .zshrc / .bashrc (woxclean1), before starship.
+# wox: WiamOX terminal helper. Package commands (`wox install/remove/update/
+# search/info/list/clean`, thin pacman wrappers) and `wox why` (alias `why`),
+# which explains the last failed command with the local llama.cpp model.
+# Plain Python (stdlib), the sources live next to this file. The shell hooks
+# are sourced from the skeleton .zshrc / .bashrc (woxclean1), before starship.
 
 pkgname=wiamox-wox
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
-pkgdesc='wox: explain failed terminal commands with the local AI (WiamOX)'
+pkgdesc='wox: short package commands and AI help for failed terminal commands (WiamOX)'
 arch=(any)
 url='https://github.com/wiamoxxx'
 license=(MIT)
-depends=(python)
+depends=(python pacman)
 optdepends=('ai-center: starts the local llama.cpp model that wox why asks')
-source=(wox hook.zsh hook.bash)
-sha256sums=('SKIP' 'SKIP' 'SKIP')
+source=(wox hook.zsh hook.bash _wox wox.bash test_wox.py)
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+check() {
+  python test_wox.py
+}
 
 package() {
   install -Dm755 wox "$pkgdir/usr/bin/wox"
   install -Dm644 hook.zsh  "$pkgdir/usr/share/wiamox-wox/hook.zsh"
   install -Dm644 hook.bash "$pkgdir/usr/share/wiamox-wox/hook.bash"
+  install -Dm644 _wox      "$pkgdir/usr/share/zsh/site-functions/_wox"
+  install -Dm644 wox.bash  "$pkgdir/usr/share/bash-completion/completions/wox"
 }

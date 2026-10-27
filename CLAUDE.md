@@ -134,6 +134,8 @@ something important. User-facing details are in README.md.
 
 - 19.10.2026: added `wiamox-wox` 0.1.0 (local sources in `wiamox-wox/`: `wox` Python stdlib, `hook.zsh`, `hook.bash`). `wox why` (alias `why`, `wox diagnose`) asks llama-server (127.0.0.1:8080, `WOX_LLAMA_URL`) to explain the last failed command. The hooks are sourced from the skel `.zshrc`/`.bashrc` (woxclean1) **before starship** and keep failed commands only (no output) in `$XDG_RUNTIME_DIR/wox/<shellpid>.log`: max 8 entries, max 1 h, removed at shell exit, dead shells swept at start. Output is obtained by re-running the command (asks first), paste, tmux screen, or `cmd 2>&1 | wox why`; capturing stderr live was rejected (breaks isatty/colours). Tested with a fake llama-server through a pty in zsh and bash. Version 1 = one answer, no chat; `--screen` (vision) planned.
 
+- 27.10.2026: `wiamox-wox` 0.2.0: package commands, thin pacman wrappers that print the real command first and pass extra flags through: `wox install|i` = `sudo pacman -Sy` (**`-Sy`, not `-S`/`-Syu`: Wiam's decision**; users run `wox update` first), `remove|rm` = `-Rns`, `update|up` = `-Syu`, `search|s` = `-Ss`, `info` (`-Qi` if installed, else `-Si`), `list` = `-Qe`, `clean` = `-Rns` of `pacman -Qdtq`. No sudo when already root. zsh (`_wox`) + bash (`wox.bash`) completion with package names. The hooks now skip only `wox why`/`wox diagnose`/`why`, so a failed `wox install` can be explained. `check()` runs `test_wox.py` (fake sudo/pacman on PATH). Merged to main; not yet rebuilt into woxKitchen.
+
 ## 7. Related repos
 
 - `wiamoxxx/woxclean1` — the archiso profile (ISO). `pacman.conf` with
