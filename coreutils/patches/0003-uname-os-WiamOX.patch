@@ -1,0 +1,25 @@
+From: Wiam Khader <Wiam@wiamox.com>
+Subject: [PATCH] uname: report WiamOX as the operating system (uname -o)
+
+Replaces the earlier edit of gnulib's m4/host-os.m4 (linux* -> 'WiamOX'),
+which a release tarball ignores (configure is already generated) and
+"git submodule update" throws away. Same result: uname -o prints WiamOX,
+uname -s comes from the WiamOX kernel (linux/patches/).
+
+Made against coreutils v9.12-74-g9c7cf20c3 (git).
+---
+--- a/src/uname.c
++++ b/src/uname.c
+@@ -48,6 +48,12 @@
+ #include "quote.h"
+ #include "uname.h"
+ 
++/* WiamOX: uname -o names the distribution.  Set here rather than in
++   gnulib's m4/host-os.m4, so it works the same for a release tarball and
++   a git clone and survives "git submodule update".  */
++#undef HOST_OPERATING_SYSTEM
++#define HOST_OPERATING_SYSTEM "WiamOX"
++
+ /* The official name of this program (e.g., no 'g' prefix).  */
+ #define PROGRAM_NAME (uname_mode == UNAME_UNAME ? "uname" : "arch")
+ 

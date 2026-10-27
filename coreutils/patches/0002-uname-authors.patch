@@ -1,0 +1,20 @@
+From: Wiam Khader <Wiam@wiamox.com>
+Subject: [PATCH] uname, arch: Wiam Khader as author in --version
+
+Made against coreutils v9.12-74-g9c7cf20c3 (git).
+---
+diff --git a/src/uname.c b/src/uname.c
+index d41dabe49..20d9d59ba 100644
+--- a/src/uname.c
++++ b/src/uname.c
+@@ -51,8 +51,8 @@
+ /* The official name of this program (e.g., no 'g' prefix).  */
+ #define PROGRAM_NAME (uname_mode == UNAME_UNAME ? "uname" : "arch")
+ 
+-#define AUTHORS proper_name ("David MacKenzie")
+-#define ARCH_AUTHORS "David MacKenzie", "Karel Zak"
++#define AUTHORS proper_name ("Wiam Khader")
++#define ARCH_AUTHORS "Wiam Khader", "WK"
+ 
+ /* Values that are bitwise or'd into 'toprint'. */
+ /* Kernel name. */

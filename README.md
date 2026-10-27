@@ -91,6 +91,9 @@ What happens:
 5. Both packages are added to woxKitchen with `repo-add`, replacing the
    previous version. The next woxclean1 ISO build uses them.
 
+Your own kernel edits are kept as patches in `linux/patches/`; for a new
+kernel version see [Your own edits as patches](#your-own-edits-as-patches-kernel-coreutils).
+
 ### Rebuilding the same kernel version
 
 pacman only updates a package when its version goes up. After changing
@@ -338,13 +341,96 @@ has (`--force` to override).
 
 **Keep it current.** Your coreutils stays on the ISO even when Arch
 releases a newer one, with fixes. Move your changes to new coreutils
-versions now and then. Arch sometimes carries its own fixes on top of a
-release (their recipe's `*.patch` files); apply those to your tree too if
-you want them.
+versions now and then with `coreutils/apply-patches.sh` (see
+[Your own edits as patches](#your-own-edits-as-patches-kernel-coreutils)).
+Arch sometimes carries its own fixes on top of a release (their recipe's
+`*.patch` files); apply those to your tree too if you want them.
 
 **It is a core package.** A broken coreutils breaks booting and logging
 in. Install it on the build machine or in a VM first
 (`sudo pacman -U out/coreutils-*.pkg.tar.zst`) and try a few commands.
+
+## Your own edits as patches (kernel, coreutils)
+
+The source trees on your disk are not in any git repo of WiamOX, and a new
+upstream version is a fresh tree. So every WiamOX change to the kernel or
+coreutils is **also kept here as a patch file**, and a script puts them
+into a new tree:
+
+| Package | Patches | Script | Current patches |
+|---|---|---|---|
+| `linux` | `linux/patches/*.patch` | `linux/apply-patches.sh <tree>` | `0001` `uname -s` = WiamOX |
+| `coreutils` | `coreutils/patches/*.patch` | `coreutils/apply-patches.sh <tree>` | `0001` status messages (ls, cp, mv, ...), `0002` uname/arch authors, `0003` `uname -o` = WiamOX |
+
+**The build never applies them.** `build.sh` compiles exactly the tree in
+`WIAMOX_KERNEL_SRC` / `WIAMOX_COREUTILS_SRC`. Applying the patches is a
+step you do once per new tree.
+
+### Moving to a new upstream version
+
+Example: coreutils 9.13 (the kernel works the same with a kernel.org
+tarball and `linux/apply-patches.sh`).
+
+```sh
+cd ~/wiamox-coreutils
+curl -O https://ftp.gnu.org/gnu/coreutils/coreutils-9.13.tar.xz
+curl -O https://ftp.gnu.org/gnu/coreutils/coreutils-9.13.tar.xz.sig
+gpg --verify coreutils-9.13.tar.xz.sig && tar xf coreutils-9.13.tar.xz
+
+~/Projects/wiamox-pkgs/coreutils/apply-patches.sh ~/wiamox-coreutils/coreutils-9.13
+```
+
+The script goes through the patches in order and prints one line each:
+
+- `applied:` the patch was put into the tree.
+- `already applied:` the tree has it already (running the script twice is
+  safe).
+- `DOES NOT APPLY:` upstream changed those lines. The script stops and
+  **nothing of that patch** was applied. Make the change by hand in the
+  tree, then refresh the patch file (below) and run the script again.
+
+Then set `WIAMOX_COREUTILS_SRC` (or `WIAMOX_KERNEL_SRC`) in `local.conf`
+to the new tree and build. A new version starts at `pkgrel=1`.
+
+```sh
+wiamox-build coreutils      # or: scripts/build.sh coreutils inside the box
+```
+
+Check the result: `uname -o` (coreutils) / `uname -s` (kernel) print
+`WiamOX`, and the status message shows after `mkdir x` in a terminal but
+not in `echo "$(mkdir y)"`.
+
+### Adding or changing an edit
+
+1. Edit the file in your tree. Keep a pristine copy of the same version
+   to diff against (an unpacked tarball, or `git diff` in a clone).
+2. Write the patch, paths starting with `a/` and `b/` from the tree root:
+   ```sh
+   # tarball: pristine copy next to your tree
+   cd ~/wiamox-coreutils
+   diff -u coreutils-9.13.orig/src/ls.c coreutils-9.13/src/ls.c |
+     sed '1s|^--- [^/]*/|--- a/|; 2s|^+++ [^/]*/|+++ b/|' > /tmp/new.patch
+   # git clone
+   git -C ~/wiamox-coreutils/coreutils diff -- src/ls.c > /tmp/new.patch
+   ```
+3. Put it in `coreutils/patches/` (or `linux/patches/`) with the next
+   number, e.g. `0004-ls-something.patch`, and start it with a short
+   header like the existing ones (`From:`, `Subject:`, why, which version
+   it was made against, then `---`). Text above the first `---` line is
+   ignored by `patch`.
+4. Test: `apply-patches.sh` on a pristine copy must print `applied:` for
+   every patch, and a second run `already applied:`.
+5. Commit the patch in wiamox-pkgs. A rebuild of the same upstream version
+   needs a `pkgrel` bump.
+
+To change an existing patch, replace its file with a fresh diff of the
+whole change (pristine vs. your tree) and keep the number.
+
+**coreutils: only touch `src/`.** A release tarball comes with a
+pre-generated `configure`, so edits to `m4/` or `configure.ac` do nothing
+there, and in a git clone `git submodule update` throws away edits inside
+`gnulib/`. That is why `uname -o` is set in `src/uname.c` (patch 0003) and
+not in gnulib's `m4/host-os.m4`.
 
 ## Publishing woxKitchen online
 

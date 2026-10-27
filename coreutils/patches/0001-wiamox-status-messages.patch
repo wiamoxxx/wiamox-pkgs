@@ -1,0 +1,188 @@
+From: Wiam Khader <Wiam@wiamox.com>
+Subject: [PATCH] WiamOX status messages for ls, mkdir, cp, mv, rm, rmdir,
+ touch, chmod, chown, chgrp, ln
+
+After a successful run these commands print a short WiamOX line
+(wiamox_say() in src/system.h). It goes to stderr and only when both
+stdout and stderr are terminals: an earlier stdout version was captured
+by $(ln ...) / $(mkdir ...), mkinitcpio built an empty initramfs and the
+ISO panicked at boot. Pipes, redirections and $(...) never see it.
+
+Made against coreutils v9.12-74-g9c7cf20c3 (git).
+---
+diff --git a/src/chmod.c b/src/chmod.c
+index 68f37e181..6a14e190e 100644
+--- a/src/chmod.c
++++ b/src/chmod.c
+@@ -684,5 +684,8 @@ main (int argc, char **argv)
+   bit_flags |= FTS_DEFER_STAT;
+   ok = process_files (argv + optind, bit_flags);
+ 
++  if (ok)
++    wiamox_say (_("WiamOX successfully completed the permissions command."));
++
+   main_exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+ }
+diff --git a/src/chown.c b/src/chown.c
+index 82343cfc6..eb69a54e0 100644
+--- a/src/chown.c
++++ b/src/chown.c
+@@ -362,5 +362,10 @@ main (int argc, char **argv)
+                          uid, gid,
+                          required_uid, required_gid, &chopt);
+ 
++  if (ok)
++    wiamox_say (chown_mode == CHOWN_CHGRP
++          ? _("WiamOX successfully completed the group ownership command.")
++          : _("WiamOX successfully completed the ownership command."));
++
+   main_exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+ }
+diff --git a/src/cp.c b/src/cp.c
+index e17484b5d..5f03495c0 100644
+--- a/src/cp.c
++++ b/src/cp.c
+@@ -1332,5 +1332,8 @@ main (int argc, char **argv)
+   bool ok = do_copy (argc - optind, argv + optind,
+                      target_directory, no_target_directory, &x);
+ 
++  if (ok)
++    wiamox_say (_("WiamOX successfully completed the copy command."));
++
+   main_exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+ }
+diff --git a/src/ln.c b/src/ln.c
+index 335c77150..74d1aaa20 100644
+--- a/src/ln.c
++++ b/src/ln.c
+@@ -709,5 +709,8 @@ main (int argc, char **argv)
+   else
+     ok = do_link (file[0], AT_FDCWD, file[1], file[1], link_errno);
+ 
++  if (ok)
++    wiamox_say (_("WiamOX successfully completed the link command."));
++
+   main_exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+ }
+diff --git a/src/ls.c b/src/ls.c
+index 4703ce927..eb6d35cbc 100644
+--- a/src/ls.c
++++ b/src/ls.c
+@@ -1776,6 +1776,9 @@ main (int argc, char **argv)
+       /* 'cwd_n_used' might be zero now.  */
+     }
+ 
++  if (ls_mode == LS_LS && (cwd_n_used || pending_dirs))
++    wiamox_say (_("WiamOX is listing the directory."));
++
+   /* In the following if/else blocks, it is sufficient to test 'pending_dirs'
+      (and not pending_dirs->name) because there may be no markers in the queue
+      at this point.  A marker may be enqueued when extract_dirs_from_files is
+diff --git a/src/mkdir.c b/src/mkdir.c
+index d52a498e7..4f9554589 100644
+--- a/src/mkdir.c
++++ b/src/mkdir.c
+@@ -314,6 +314,10 @@ main (int argc, char **argv)
+       umask (options.umask_self);
+     }
+ 
+-  return savewd_process_files (argc - optind, argv + optind,
+-                               process_dir, &options);
++  int status = savewd_process_files (argc - optind, argv + optind,
++                                    process_dir, &options);
++  if (status == EXIT_SUCCESS)
++    wiamox_say (_("WiamOX successfully created the required directories."));
++
++  return status;
+ }
+diff --git a/src/mv.c b/src/mv.c
+index 7f0d4f8c3..66f33d949 100644
+--- a/src/mv.c
++++ b/src/mv.c
+@@ -569,5 +569,8 @@ main (int argc, char **argv)
+       ok = do_move (file[0], file[1], AT_FDCWD, file[1], &x);
+     }
+ 
++  if (ok)
++    wiamox_say (_("WiamOX successfully completed the move command."));
++
+   main_exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+ }
+diff --git a/src/rm.c b/src/rm.c
+index e85caec5a..5db8369b3 100644
+--- a/src/rm.c
++++ b/src/rm.c
+@@ -355,7 +355,10 @@ main (int argc, char **argv)
+   if (argc <= optind)
+     {
+       if (x.ignore_missing_files)
+-        return EXIT_SUCCESS;
++        {
++          wiamox_say (_("WiamOX successfully completed the removal command."));
++          return EXIT_SUCCESS;
++        }
+       else
+         {
+           error (0, 0, _("missing operand"));
+@@ -387,10 +390,16 @@ main (int argc, char **argv)
+                             select_plural (n_files))),
+                program_name, n_files);
+       if (!yesno ())
+-        return EXIT_SUCCESS;
++        {
++          wiamox_say (_("WiamOX successfully completed the removal command."));
++          return EXIT_SUCCESS;
++        }
+     }
+ 
+   enum RM_status status = rm (file, &x);
+   affirm (VALID_STATUS (status));
++  if (status != RM_ERROR)
++    wiamox_say (_("WiamOX successfully completed the removal command."));
++
+   return status == RM_ERROR ? EXIT_FAILURE : EXIT_SUCCESS;
+ }
+diff --git a/src/rmdir.c b/src/rmdir.c
+index fa2236cca..e3a22e452 100644
+--- a/src/rmdir.c
++++ b/src/rmdir.c
+@@ -291,5 +291,8 @@ main (int argc, char **argv)
+         }
+     }
+ 
++  if (ok)
++    wiamox_say (_("WiamOX successfully completed the directory removal command."));
++
+   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+ }
+diff --git a/src/system.h b/src/system.h
+index 84be742ff..1881b213f 100644
+--- a/src/system.h
++++ b/src/system.h
+@@ -1058,3 +1058,13 @@ x_timestyle_match (char const * style, bool allow_posix,
+   return res;
+ }
+ #endif
++
++/* WiamOX: friendly status line after a command succeeds.  Only shown on an
++   interactive terminal and on stderr, so $(...) captures, pipes and
++   redirections (mkinitcpio, makepkg, configure ...) never see it.  */
++static inline void
++wiamox_say (char const *msg)
++{
++  if (isatty (STDOUT_FILENO) && isatty (STDERR_FILENO))
++    fprintf (stderr, "%s\n", msg);
++}
+diff --git a/src/touch.c b/src/touch.c
+index ad1ea5e0e..edb98e585 100644
+--- a/src/touch.c
++++ b/src/touch.c
+@@ -447,5 +447,8 @@ main (int argc, char **argv)
+   for (; optind < argc; ++optind)
+     ok &= touch (argv[optind]);
+ 
++  if (ok)
++    wiamox_say (_("WiamOX successfully completed the timestamp update command."));
++
+   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+ }
