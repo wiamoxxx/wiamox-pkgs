@@ -26,6 +26,7 @@ something important. User-facing details are in README.md.
 | `linux`, `linux-headers` | `linux/` | kernel tree on disk (`WIAMOX_KERNEL_SRC`) | named `linux` to replace Arch's; config from fragments; ~30 GB to build |
 | `calamares-wiamox` | `calamares-wiamox/` | git submodule (wiamoxxx/calamares-wiamox) | config-only, `--nodeps` |
 | `woxed` | `woxed/` | git submodule (wiamoxxx/woxed) | needs internet at build time; `WOXED_JOBS` for parser compile |
+| `wed` | `wed/` | git submodule (wiamoxxx/wed, Wiam's Editor, Lapce fork) | PKGBUILD lives in that repo (memory: its CLAUDE.md); needs internet at build time (crates, private `wiamoxxx/floem` fork over SSH, grammars + plugins pinned in `packaging/runtime.lock`); ~13 min, ~4.6 GB peak RAM; `--syncdeps` (rust, rust-wasm, …); depends on 12 language servers incl. `gopls`+`go` |
 | `ai-center` | `ai-center/` | git submodule (wiamoxxx/ai-center) | PKGBUILD lives in that repo; launcher only (ComfyUI container and image bundles were removed in 0.7.0), `arch=any`, `--nodeps` (no makedepends); project memory in its CLAUDE.md |
 | `wiamox-opencode` | `wiamox-opencode/` | npm tarball `opencode-linux-x64` (upstream prebuilt Bun binary), sha256-pinned | `provides=(opencode)`; `!strip` (strip corrupts the binary); wrapper sets offline env; `ai-center` depends on it; no makedepends → `--nodeps`; packs x64 + x64-baseline, wrapper picks by avx2; LSPs = optdepends only |
 | `wiamox-llama.cpp-cuda` | `wiamox-llama.cpp-cuda/` | git source `ggml-org/llama.cpp`, pinned by tag `bNNNN` + commit | `provides/conflicts=(llama.cpp)`; one package per GPU variant (ROCm later = `wiamox-llama.cpp-rocm/`); `/usr/bin/llama-server` (+cli, bench, quantize, gguf-split, perplexity, mtmd-cli for vision), libs in `/usr/lib/wiamox-llama.cpp` via RPATH; `GGML_NATIVE=OFF`, no curl; `ai-center` depends on `llama.cpp`; has makedepends → `--syncdeps` (cuda, cmake) |
@@ -144,6 +145,13 @@ something important. User-facing details are in README.md.
 
 - 27.10.2026: NVIDIA support. `wiamox-wox` 0.3.0 (`wox gpu`: sysfs detection, recommendation, status, tips; `wox gpu install`), new `wiamox-nvidia` 1.0.0, calamares-wiamox 1.8.0 ("NVIDIA graphics" bundle + `wiamox-nvidia` step after `packages`), woxclean1 (live 615 driver + "NVIDIA driver" boot entries, default entries `module_blacklist=nvidia…`, `/etc/modprobe.d/nvidia-utils.conf` live override, driver sets in the offline repo). 615, 580xx and 470xx all compile against the 7.3 headers (tested 27.10.2026, not loaded). Built into woxKitchen 27.10.2026 (wiamox-wox 0.3.0-1, wiamox-nvidia/-new/-legacy 1.0.0-1, calamares-wiamox 1.8.0-1; check() tests passed in the box). Not booted yet.
 
+- 28.10.2026: added **`wed` 0.1.0** (Wiam's Editor, GUI, Lapce fork; submodule
+  `wed/` at `2843eb6b`). Built in the box with `build.sh wed` into woxKitchen
+  (wed-0.1.0-1, 46 MB, ~13 min): check() (wed's `check-offline.sh`, version,
+  runtime files) and the library check passed; no `/home` paths in the binaries.
+  Installed in the box, `scripts/test-offline.sh --installed` OK (12/12 servers).
+  Listed in woxclean1 `packages.x86_64` + `/etc/xdg/mimeapps.list` (default editor).
+
 ## 7. Related repos
 
 - `wiamoxxx/woxclean1` — the archiso profile (ISO). `pacman.conf` with
@@ -152,6 +160,7 @@ something important. User-facing details are in README.md.
   `docs/wiamox-distro.md` (German).
 - `wiamoxxx/calamares-wiamox` — installer config (submodule here).
 - `wiamoxxx/woxed` — WiamOX Editor (submodule here), own `CLAUDE.md`.
+- `wiamoxxx/wed` — Wiam's Editor, GUI (submodule here), own `CLAUDE.md`.
 - `wiamoxxx/WiamOX-Interface` — Quickshell desktop shell (submodule of
   woxclean1, not built here).
 

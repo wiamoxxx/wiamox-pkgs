@@ -13,6 +13,7 @@ script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 | `wiamox-llama.cpp-cuda/` | `wiamox-llama.cpp-cuda` (provides `llama.cpp`): `llama-server` for AI Center, CUDA build | llama.cpp from GitHub, pinned by commit, built at build time |
 | `wiamox-comfyui-cuda/` | `wiamox-comfyui-cuda` (provides `comfyui`): ComfyUI for AI Center, own Python + PyTorch, works offline, CUDA build | ComfyUI release tag, PyPI and the PyTorch wheel index, custom nodes pinned by commit; all fetched at build time |
 | `woxed/` | `woxed`: the WiamOX Editor | git submodule → [wiamoxxx/woxed](https://github.com/wiamoxxx/woxed) |
+| `wed/` | `wed`: Wiam's Editor (GUI) | git submodule → [wiamoxxx/wed](https://github.com/wiamoxxx/wed) |
 | `aur/calamares/` | `calamares`: the installer program | the AUR, cloned on first build (not part of this repo) |
 | `coreutils/` | `coreutils`: the basic commands (`ls`, `cp`, ...) | a coreutils source tree **on your disk** (with your own edits) |
 
@@ -229,6 +230,19 @@ New/changed node: edit `nodes.txt`, bump `pkgrel`. ROCm later = a copy of
 the folder as `wiamox-comfyui-rocm` with `_backend=rocm7.2`. Must be in
 woxKitchen (and in the Calamares "AI" bundle) before users can run the
 ComfyUI card.
+
+## Building wed
+
+```sh
+scripts/build.sh wed
+```
+
+Builds the committed version recorded in the `wed/` submodule. Needs
+internet (Rust crates, the private `wiamoxxx/floem` fork over SSH, grammars
+and plugins pinned in wed's `packaging/runtime.lock`); takes about 13 minutes
+and up to ~5 GB of RAM. `check()` runs wed's offline check. To build a newer
+wed: bump `version` in wed's `Cargo.toml`, push, then
+`git submodule update --remote wed` here and commit.
 
 ## Building woxed
 

@@ -10,3 +10,7 @@
 	path = ai-center
 	url = https://github.com/wiamoxxx/ai-center.git
 	branch = main
+[submodule "wed"]
+	path = wed
+	url = https://github.com/wiamoxxx/wed.git
+	branch = main
