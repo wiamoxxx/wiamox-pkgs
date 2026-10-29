@@ -158,6 +158,11 @@ something important. User-facing details are in README.md.
   filter lists) and the library check passed. The box needed its runtime deps
   first (GStreamer plugins): makepkg's install prompt can't be answered there.
   Listed in woxclean1 `packages.x86_64`; default for http/https links.
+- 29.10.2026: `woxbrowser` **0.2.0** (submodule at `6aca80c`): camera/microphone
+  prompt, `:firefox`/`:mpv`/`;v`, start page with most visited + quickmarks +
+  bookmarks and a tutorial page, spell checking, zoom widget, MediaSource on.
+  New deps `hunspell` + `hunspell-en_us`; new optdepends mpv, yt-dlp, firefox,
+  gst-plugin-va. Not built into woxKitchen yet.
 
 ## 7. Related repos
 
