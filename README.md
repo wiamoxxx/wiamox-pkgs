@@ -14,7 +14,7 @@ script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 | `wiamox-comfyui-cuda/` | `wiamox-comfyui-cuda` (provides `comfyui`): ComfyUI for AI Center, own Python + PyTorch, works offline, CUDA build | ComfyUI release tag, PyPI and the PyTorch wheel index, custom nodes pinned by commit; all fetched at build time |
 | `woxed/` | `woxed`: the WiamOX Editor | git submodule → [wiamoxxx/woxed](https://github.com/wiamoxxx/woxed) |
 | `woxbrowser/` | `woxbrowser`: WiamOX Browser | git submodule → [wiamoxxx/woxbrowser](https://github.com/wiamoxxx/woxbrowser) |
-| `woxmon/` | `woxmon`: WiamOX Monitor (terminal system monitor) | git submodule → [wiamoxxx/woxmon](https://github.com/wiamoxxx/woxmon) |
+| `woxmon/` | `woxmon`: WiamOX Monitor (terminal system monitor) | its own code, in this repo (`woxmon/`) |
 | `wed/` | `wed`: Wiam's Editor (GUI) | git submodule → [wiamoxxx/wed](https://github.com/wiamoxxx/wed) |
 | `aur/calamares/` | `calamares`: the installer program | the AUR, cloned on first build (not part of this repo) |
 | `coreutils/` | `coreutils`: the basic commands (`ls`, `cp`, ...) | a coreutils source tree **on your disk** (with your own edits) |
@@ -264,10 +264,9 @@ build a newer woxbrowser: bump `WOX_VERSION` in its `config.mk`, push, then
 scripts/build.sh woxmon
 ```
 
-Builds the committed version recorded in the `woxmon/` submodule in about a
-minute, without internet. `check()` runs woxmon's tests. To build a newer
-woxmon: bump `VERSION` in its `CMakeLists.txt`, push, then
-`git submodule update --remote woxmon` here and commit.
+Builds the committed state of the `woxmon/` folder (uncommitted changes are
+not packaged) in about a minute, without internet. `check()` runs woxmon's
+tests. For a new version: bump `VERSION` in `woxmon/CMakeLists.txt` and commit.
 
 ## Building woxed
 

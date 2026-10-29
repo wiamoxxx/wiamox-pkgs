@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=WiamOX Monitor
+GenericName=System Monitor
+Comment=CPU, memory, disks, network, GPU and processes at a glance
+Icon=com.wiamox.woxmon
+Exec=woxmon
+Terminal=true
+Categories=System;Monitor;ConsoleOnly;
+Keywords=system;monitor;process;task;cpu;memory;ram;gpu;disk;network;top;woxmon;

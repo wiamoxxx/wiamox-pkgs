@@ -1,0 +1,89 @@
+# Maintainer: Wiam Khader <Wiam@wiamox.com>
+#
+# woxmon — WiamOX Monitor. Terminal system monitor of WiamOX: CPU, memory,
+# disks, network, GPU (NVIDIA, AMD, Intel) and processes. Everything it needs
+# is in this folder (fmt is bundled, GoogleTest comes from the system), so
+# the build needs no internet.
+#
+# Build:   scripts/build.sh woxmon   (wiamox-pkgs root), or makepkg -s in this folder
+# The source is this folder as committed in HEAD (git archive), so uncommitted
+# changes are never packaged. The C++ code lives in source/, not src/: src/ is
+# makepkg's own work folder here and --cleanbuild deletes it.
+
+pkgname=woxmon
+pkgver=$(sed -n 's/^  VERSION \([0-9.]*\)$/\1/p' CMakeLists.txt | head -1)
+pkgrel=1
+pkgdesc="WiamOX Monitor — terminal system monitor of WiamOX by Wiam Khader (CPU, memory, disks, network, GPU, processes)"
+arch=('x86_64')
+url="https://github.com/wiamoxxx/wiamox-pkgs"
+license=('Apache-2.0' 'MIT')  # woxmon: Apache-2.0; bundled fmt and intel_gpu_top: MIT
+
+depends=('glibc' 'gcc-libs')
+optdepends=(
+  'nvidia-utils: NVIDIA GPU stats (NVML)'
+  'rocm-smi-lib: more AMD GPU stats (without it: what amdgpu shows in sysfs)'
+)
+makedepends=('git' 'cmake' 'gtest' 'lowdown' 'librsvg')
+
+prepare() {
+  # this folder as committed (git archive run in a subfolder takes only that subfolder)
+  rm -rf "$srcdir/$pkgname"
+  mkdir -p "$srcdir/$pkgname"
+  # WOX_UNCOMMITTED=1 (testing only): include uncommitted changes to tracked files
+  local tree=HEAD
+  if [[ ${WOX_UNCOMMITTED-} == 1 ]]; then
+    tree=$(git -C "$startdir" stash create)
+    tree=${tree:-HEAD}
+  fi
+  git -C "$startdir" archive --format=tar "$tree" | tar -x -C "$srcdir/$pkgname"
+}
+
+build() {
+  cd "$srcdir/$pkgname"
+  cmake -B build -S . \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DWOXMON_GPU=ON \
+    -DBUILD_TESTING=ON
+  cmake --build build
+}
+
+check() {
+  cd "$srcdir/$pkgname"
+  ctest --test-dir build --output-on-failure
+
+  local version
+  version=$(build/woxmon --version 2>/dev/null | head -1)
+  [[ $version == "woxmon (WiamOX Monitor) version: "*"$pkgver"* ]] || { echo "unexpected version: $version" >&2; return 1; }
+  # the GPU box is on by default
+  build/woxmon --default-config | grep -qx 'shown_boxes = "cpu mem net proc gpu0"'
+  # WiamOX branding only: the old name must not show up anywhere in what we ship
+  # (sources incl. manpage.md, and the binary; not woxmon.1: troff's bold code before "top(1)" is a false hit)
+  if grep -rIil 'b''top' . --exclude-dir=build --exclude-dir=.git ||
+     grep -qi 'b''top' build/woxmon; then
+    echo "found the old name (see above)" >&2
+    return 1
+  fi
+}
+
+package() {
+  cd "$srcdir/$pkgname"
+  DESTDIR="$pkgdir" cmake --install build
+
+  # icon PNGs for every common size (CMake installs the scalable SVG)
+  local size
+  for size in 16 24 32 48 64 128 256 512; do
+    install -d "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps"
+    rsvg-convert -w "$size" -h "$size" packaging/com.wiamox.woxmon.svg \
+      -o "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/com.wiamox.woxmon.png"
+  done
+  # system-wide themes folder (empty: the Default and TTY themes are built in)
+  install -d "$pkgdir/usr/share/$pkgname/themes"
+
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 include/fmt/LICENSE.rst "$pkgdir/usr/share/licenses/$pkgname/fmt-LICENSE.rst"
+  # MIT notice of the Intel GPU reader (the comment at the top of its source)
+  sed -n '1,/\*\//p' source/linux/intel_gpu_top/intel_gpu_top.c |
+    install -Dm644 /dev/stdin "$pkgdir/usr/share/licenses/$pkgname/intel_gpu_top-LICENSE"
+}

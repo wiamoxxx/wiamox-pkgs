@@ -1,0 +1,15 @@
+# build folders (cmake -B build, makepkg)
+/build/
+/src/
+/pkg/
+*.pkg.tar.*
+*.log
+
+# compiled
+*.o
+*.a
+*.so
+/woxmon
+woxmon.1
+config.h
+compile_commands.json

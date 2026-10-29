@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- WiamOX Monitor (woxmon): rounded WiamOX tile, a load graph in the brand
+       gradient over three bars, ending in the emerald dot of the WiamOX logo.
+       Same family as the wed, woxed, woxbrowser and AI Center icons. -->
+  <defs>
+    <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="8" y1="8" x2="120" y2="120">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.5" stop-color="#60a5fa"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#34d399" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#34d399" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="#0f1b2e"/>
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="none" stroke="url(#g)" stroke-width="6"/>
+  <g fill="url(#g)" opacity="0.35">
+    <rect x="28" y="80" width="12" height="18" rx="3"/>
+    <rect x="46" y="70" width="12" height="28" rx="3"/>
+    <rect x="64" y="84" width="12" height="14" rx="3"/>
+  </g>
+  <path d="M24 66 L40 66 L48 48 L60 82 L72 34 L82 60 L90 60" fill="none" stroke="url(#g)"
+        stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="98" cy="60" r="18" fill="url(#glow)"/>
+  <circle cx="98" cy="60" r="7" fill="#34d399"/>
+</svg>
