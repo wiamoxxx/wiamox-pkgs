@@ -163,6 +163,8 @@ something important. User-facing details are in README.md.
   bookmarks and a tutorial page, spell checking, zoom widget, MediaSource on.
   New deps `hunspell` + `hunspell-en_us`; new optdepends mpv, yt-dlp, firefox,
   gst-plugin-va. Not built into woxKitchen yet.
+- 29.10.2026: `woxbrowser` **0.2.1** (submodule at `29cd09a`): `:download-video`
+  and `;d` (yt-dlp into `~/Videos`). Not built into woxKitchen yet.
 
 ## 7. Related repos
 
