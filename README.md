@@ -13,6 +13,7 @@ script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 | `wiamox-llama.cpp-cuda/` | `wiamox-llama.cpp-cuda` (provides `llama.cpp`): `llama-server` for AI Center, CUDA build | llama.cpp from GitHub, pinned by commit, built at build time |
 | `wiamox-comfyui-cuda/` | `wiamox-comfyui-cuda` (provides `comfyui`): ComfyUI for AI Center, own Python + PyTorch, works offline, CUDA build | ComfyUI release tag, PyPI and the PyTorch wheel index, custom nodes pinned by commit; all fetched at build time |
 | `woxed/` | `woxed`: the WiamOX Editor | git submodule → [wiamoxxx/woxed](https://github.com/wiamoxxx/woxed) |
+| `woxbrowser/` | `woxbrowser`: WiamOX Browser | git submodule → [wiamoxxx/woxbrowser](https://github.com/wiamoxxx/woxbrowser) |
 | `wed/` | `wed`: Wiam's Editor (GUI) | git submodule → [wiamoxxx/wed](https://github.com/wiamoxxx/wed) |
 | `aur/calamares/` | `calamares`: the installer program | the AUR, cloned on first build (not part of this repo) |
 | `coreutils/` | `coreutils`: the basic commands (`ls`, `cp`, ...) | a coreutils source tree **on your disk** (with your own edits) |
@@ -243,6 +244,18 @@ and plugins pinned in wed's `packaging/runtime.lock`); takes about 13 minutes
 and up to ~5 GB of RAM. `check()` runs wed's offline check. To build a newer
 wed: bump `version` in wed's `Cargo.toml`, push, then
 `git submodule update --remote wed` here and commit.
+
+## Building woxbrowser
+
+```sh
+scripts/build.sh woxbrowser
+```
+
+Builds the committed version recorded in the `woxbrowser/` submodule in about
+30 seconds, without internet (the ad-block lists are part of the repo;
+refresh them there with `scripts/update-adblock.sh` before a release). To
+build a newer woxbrowser: bump `WOX_VERSION` in its `config.mk`, push, then
+`git submodule update --remote woxbrowser` here and commit.
 
 ## Building woxed
 

@@ -26,6 +26,7 @@ something important. User-facing details are in README.md.
 | `linux`, `linux-headers` | `linux/` | kernel tree on disk (`WIAMOX_KERNEL_SRC`) | named `linux` to replace Arch's; config from fragments; ~30 GB to build |
 | `calamares-wiamox` | `calamares-wiamox/` | git submodule (wiamoxxx/calamares-wiamox) | config-only, `--nodeps` |
 | `woxed` | `woxed/` | git submodule (wiamoxxx/woxed) | needs internet at build time; `WOXED_JOBS` for parser compile |
+| `woxbrowser` | `woxbrowser/` | git submodule (wiamoxxx/woxbrowser, WiamOX Browser, Luakit fork, GPLv3) | PKGBUILD lives in that repo (memory: its CLAUDE.md); no internet needed (ad-block lists are committed in `packaging/adblock`); ~30 s; depends on webkit2gtk-4.1, luajit, GStreamer plugins |
 | `wed` | `wed/` | git submodule (wiamoxxx/wed, Wiam's Editor, Lapce fork) | PKGBUILD lives in that repo (memory: its CLAUDE.md); needs internet at build time (crates, private `wiamoxxx/floem` fork over SSH, grammars + plugins pinned in `packaging/runtime.lock`); ~13 min, ~4.6 GB peak RAM; `--syncdeps` (rust, rust-wasm, …); depends on 12 language servers incl. `gopls`+`go` |
 | `ai-center` | `ai-center/` | git submodule (wiamoxxx/ai-center) | PKGBUILD lives in that repo; launcher only (ComfyUI container and image bundles were removed in 0.7.0), `arch=any`, `--nodeps` (no makedepends); project memory in its CLAUDE.md |
 | `wiamox-opencode` | `wiamox-opencode/` | npm tarball `opencode-linux-x64` (upstream prebuilt Bun binary), sha256-pinned | `provides=(opencode)`; `!strip` (strip corrupts the binary); wrapper sets offline env; `ai-center` depends on it; no makedepends → `--nodeps`; packs x64 + x64-baseline, wrapper picks by avx2; LSPs = optdepends only |
@@ -151,6 +152,12 @@ something important. User-facing details are in README.md.
   runtime files) and the library check passed; no `/home` paths in the binaries.
   Installed in the box, `scripts/test-offline.sh --installed` OK (12/12 servers).
   Listed in woxclean1 `packages.x86_64` + `/etc/xdg/mimeapps.list` (default editor).
+- 29.10.2026: added **`woxbrowser` 0.1.0** (WiamOX Browser, Luakit fork; submodule
+  `woxbrowser/` at `478964dc`). Built in the box with `build.sh woxbrowser` into
+  woxKitchen (woxbrowser-0.1.0-1, 1.7 MB, ~30 s): check() (Lua compiles, version,
+  filter lists) and the library check passed. The box needed its runtime deps
+  first (GStreamer plugins): makepkg's install prompt can't be answered there.
+  Listed in woxclean1 `packages.x86_64`; default for http/https links.
 
 ## 7. Related repos
 
@@ -161,6 +168,7 @@ something important. User-facing details are in README.md.
 - `wiamoxxx/calamares-wiamox` — installer config (submodule here).
 - `wiamoxxx/woxed` — WiamOX Editor (submodule here), own `CLAUDE.md`.
 - `wiamoxxx/wed` — Wiam's Editor, GUI (submodule here), own `CLAUDE.md`.
+- `wiamoxxx/woxbrowser` — WiamOX Browser (submodule here), own `CLAUDE.md`.
 - `wiamoxxx/WiamOX-Interface` — Quickshell desktop shell (submodule of
   woxclean1, not built here).
 

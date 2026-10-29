@@ -14,3 +14,7 @@
 	path = wed
 	url = https://github.com/wiamoxxx/wed.git
 	branch = main
+[submodule "woxbrowser"]
+	path = woxbrowser
+	url = https://github.com/wiamoxxx/woxbrowser.git
+	branch = main
