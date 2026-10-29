@@ -10,6 +10,7 @@
 #   scripts/build.sh woxed                the WiamOX Editor (git submodule)
 #   scripts/build.sh wed                  Wiam's Editor, GUI (git submodule)
 #   scripts/build.sh woxbrowser           WiamOX Browser (git submodule)
+#   scripts/build.sh woxmon               WiamOX Monitor, terminal system monitor (folder woxmon/)
 #   scripts/build.sh ai-center            the WiamOX AI Center launcher (git submodule)
 #   scripts/build.sh wiamox-opencode      OpenCode (offline build of the upstream binary)
 #   scripts/build.sh wiamox-wox           wox: package commands, wox gpu, wox why (explain failed commands, local AI)

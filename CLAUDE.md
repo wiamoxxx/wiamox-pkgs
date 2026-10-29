@@ -33,6 +33,7 @@ something important. User-facing details are in README.md.
 | `wiamox-llama.cpp-cuda` | `wiamox-llama.cpp-cuda/` | git source `ggml-org/llama.cpp`, pinned by tag `bNNNN` + commit | `provides/conflicts=(llama.cpp)`; one package per GPU variant (ROCm later = `wiamox-llama.cpp-rocm/`); `/usr/bin/llama-server` (+cli, bench, quantize, gguf-split, perplexity, mtmd-cli for vision), libs in `/usr/lib/wiamox-llama.cpp` via RPATH; `GGML_NATIVE=OFF`, no curl; `ai-center` depends on `llama.cpp`; has makedepends → `--syncdeps` (cuda, cmake) |
 | `wiamox-comfyui-cuda` | `wiamox-comfyui-cuda/` | ComfyUI git tag `v$pkgver` + PyPI + PyTorch wheel index + `nodes.txt` (git, pinned by commit); all fetched at build time | `provides/conflicts=(comfyui)`; self-contained: uv-managed Python 3.12 in `/usr/lib/wiamox-comfyui/python`, torch `cu130` wheels (CUDA inside, only `nvidia-utils` from the system), `/usr/bin/wiamox-comfyui` wrapper (offline env), nodes copied to the user's folder by AI Center; `!strip`; `check()` = CPU smoke test; makedepends `uv git` → `--syncdeps`; ROCm later = `_backend=rocm7.2` copy; `ai-center` optdepends it |
 | `wiamox-nvidia` (+ `-new`, `-legacy`) | `wiamox-nvidia/` | local sources | `setup` (installer step `shellprocess@wiamox-nvidia` + `wox gpu install`): card → 615 open (`new.packages`, Turing+ ≥0x1E00) / 580xx legacy (`legacy.packages`, chaotic-aur, 0x1340–0x1DFF) / nouveau (Kepler-) / none; DKMS both (Arch's prebuilt modules don't fit the WiamOX kernel). `-new`/`-legacy` = marker files only (the branches conflict, so the bundle can't list drivers). Lists are read by woxclean1 `build-wiamox-repo.sh`. Ships the niri VRAM app profile. `check()` = `test_setup.py`. Needs `wiamox-wox>=0.3.0` (`wox gpu --recommend`). |
+| `woxmon` | `woxmon/` | own code in this repo (WiamOX Monitor, terminal system monitor, C++/CMake, Apache-2.0) | memory: `woxmon/CLAUDE.md`; PKGBUILD packages the committed folder (`git archive`); own code from here on (fresh copy, no upstream; the base's name must appear nowhere, `check()` scans for it); no internet needed; ~1 min; makedepends `cmake gtest lowdown librsvg` → `--syncdeps`; optdepends `nvidia-utils`, `rocm-smi-lib` |
 | `calamares` | `aur/calamares/` (gitignored) | the AUR, cloned/updated by build.sh | links libpython → rebuild after every Python update (`--force`) |
 | `coreutils` | `coreutils/` | coreutils tree on disk (`WIAMOX_COREUTILS_SRC`) | release tarball or git clone + gnulib; Arch's configure flags |
 
@@ -165,6 +166,14 @@ something important. User-facing details are in README.md.
   gst-plugin-va. Not built into woxKitchen yet.
 - 29.10.2026: `woxbrowser` **0.2.1** (submodule at `29cd09a`): `:download-video`
   and `;d` (yt-dlp into `~/Videos`). Not built into woxKitchen yet.
+- 29.10.2026: added **`woxmon` 1.0.0** (WiamOX Monitor, terminal system monitor;
+  folder `woxmon/` in this repo, owner's choice over a separate repo). Owner's choices: fresh copy of
+  an Apache-2.0 monitor as base, own code from now on, WiamOX branding only
+  (LICENSE + original copyright headers kept, nothing in the UI), Linux only,
+  bundled themes dropped, GPU box on by default, desktop entry. PKGBUILD
+  functions run in Claude's environment (GCC 14, tests pass, no warnings); not
+  yet built with makepkg in the box. To do: `build.sh woxmon`, then list
+  `woxmon` in woxclean1 `packages.x86_64`.
 
 ## 7. Related repos
 
