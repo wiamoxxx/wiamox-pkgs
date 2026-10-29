@@ -76,4 +76,8 @@ in README.md.
   root CLAUDE.md/README.md list woxmon too.
 - New source files: `woxmon_*.cpp/.hpp` in `source/`, SPDX header + Wiam's copyright.
 - Bump `VERSION` in `CMakeLists.txt` (and `pkgrel` back to 1) for a release,
-  add a CHANGELOG.md entry.
+  add a CHANGELOG.md entry, and update the version badge in README.md.
+- README.md is GitHub-style (logo, badges, screenshots in `docs/`). The
+  screenshots are real woxmon screens: run it in tmux, `tmux capture-pane -e -p`,
+  replay the capture in xterm.js (canvas renderer draws box/braille glyphs)
+  and screenshot it with Playwright. Keep `docs/` small (4 screenshots + logo).
