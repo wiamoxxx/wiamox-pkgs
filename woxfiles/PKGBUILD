@@ -1,0 +1,30 @@
+# Maintainer: Wiam Khader <Wiam@wiamox.com>
+pkgname=woxfiles
+pkgver=1.1.0
+pkgrel=1
+pkgdesc="WiamOX File Manager by Wiam Khader"
+arch=('x86_64')
+url='https://wiamox.com'
+license=('GPL-2.0-or-later')
+depends=('python' 'qt6-base' 'qt6-svg' 'qt6-wayland' 'libfm-qt' 'layer-shell-qt' 'papirus-icon-theme' 'gvfs' 'xdg-utils')
+makedepends=('cmake' 'ninja' 'qt6-tools' 'python' 'dbus')
+optdepends=('ghostty: open a terminal here' 'file-roller: create and extract archives' 'gvfs-smb: browse SMB shares')
+options=('!lto')
+prepare() {
+  local files_src=${WIAMOX_FILES_SRC:-$startdir/../../woxfiles}
+  [[ -f $files_src/UPSTREAM.md && -f $files_src/CMakeLists.txt ]] || { error "Missing woxfiles sibling source tree"; return 1; }
+  mkdir -p "$srcdir/woxfiles"
+  bsdtar --exclude=.git --exclude='./build*' -cf - -C "$files_src" . | bsdtar -xf - -C "$srcdir/woxfiles"
+}
+build() {
+  export CFLAGS='-march=x86-64 -mtune=generic -O2 -pipe'
+  export CXXFLAGS="$CFLAGS"
+  cmake -S "$srcdir/woxfiles" -B "$srcdir/build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DWOXFILES_BUILD_SMOKE=ON
+  cmake --build "$srcdir/build" --parallel "${WIAMOX_FILES_JOBS:-3}"
+}
+check() {
+  python "$srcdir/woxfiles/tests/run-smoke.py" "$srcdir/build"
+}
+package() {
+  DESTDIR="$pkgdir" cmake --install "$srcdir/build"
+}

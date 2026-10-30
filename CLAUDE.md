@@ -230,3 +230,15 @@ WIAMOX_VIEWER_SRC. It includes local edits; source is copied, never changed.
 Runtime offline; Paint, Transform, Page Extraction and required image codecs
 are bundled/declared dependencies. Run through the Arch build container.
 Command: woxview. App ID: com.wiamox.woxview. Source memory: woxview/CLAUDE.md.
+
+## woxfiles (30.10.2026)
+
+`woxfiles/PKGBUILD` builds the sibling `../woxfiles` source tree (override
+`WIAMOX_FILES_SRC`), including local edits, into woxfiles 1.1.0.
+One-time independent PCManFM-Qt copy; no upstream followups. Default GUI file
+manager, standard Fusion/Papirus appearance with saved Preferences overrides.
+Desktop management disabled. Sync 1.1.0 supports update, mirror and history-based
+two-way sync with preview, explicit conflicts and retained originals. Python is
+a runtime dependency; check() runs filesystem tests and real UI smoke checks.
+wazi is deferred.
+Build: `scripts/build.sh woxfiles` in the Arch build box before the next ISO.
