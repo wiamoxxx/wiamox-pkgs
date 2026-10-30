@@ -240,5 +240,18 @@ manager, standard Fusion/Papirus appearance with saved Preferences overrides.
 Desktop management disabled. Sync 1.1.0 supports update, mirror and history-based
 two-way sync with preview, explicit conflicts and retained originals. Python is
 a runtime dependency; check() runs filesystem tests and real UI smoke checks.
-wazi is deferred.
+wazi is packaged separately as the terminal companion.
 Build: `scripts/build.sh woxfiles` in the Arch build box before the next ISO.
+
+## wazi (31.10.2026)
+
+`wazi/PKGBUILD` builds the sibling `../wazi` source tree (override
+`WIAMOX_WAZI_SRC`) into wazi 1.0.0. Independent Superfile 1.6.0 copy, own
+module/config identity, Nightfall defaults and icon, no upstream tracking or
+automatic update checks. F1 and --tutorial show the offline guide;
+`wazi tutorial` creates a new two-pane practice session without resetting files.
+Runtime: static Go binary, XDG openers and Nerd Font; Ghostty for the desktop
+launcher. checkdepends ExifTool/zoxide support upstream integration checks.
+check() runs the Go suite and isolated real-terminal smoke checks.
+Build: `wiamox-build wazi`. The ISO replaces Yazi with wazi; woxfiles stays
+the graphical default. Source memory and navigation docs live in ../wazi.

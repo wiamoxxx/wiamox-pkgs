@@ -1,0 +1,42 @@
+# Maintainer: Wiam Khader <Wiam@wiamox.com>
+pkgname=wazi
+pkgver=1.0.0
+pkgrel=2
+pkgdesc="WiamOX Terminal File Manager with offline navigation tutorial"
+arch=('x86_64')
+url='https://github.com/wiamoxxx/wazi'
+license=('MIT')
+depends=('glibc' 'xdg-utils' 'ttf-jetbrains-mono-nerd')
+makedepends=('go')
+checkdepends=('perl-image-exiftool' 'zoxide' 'python')
+optdepends=('ghostty: WiamOX desktop launcher' 'woxed: default file editor' 'perl-image-exiftool: detailed metadata' 'zoxide: fast directory jumps' 'wl-clipboard: Wayland clipboard')
+options=('!lto' '!debug')
+prepare() {
+  local wazi_src=${WIAMOX_WAZI_SRC:-$startdir/../../wazi}
+  [[ -f $wazi_src/UPSTREAM.md && -f $wazi_src/go.mod ]] || { error "Missing wazi sibling source tree"; return 1; }
+  mkdir -p "$srcdir/wazi"
+  bsdtar --exclude=.git --exclude='./build*' --exclude='./bin' --exclude='./vendor' -cf - -C "$wazi_src" . | bsdtar -xf - -C "$srcdir/wazi"
+}
+build() {
+  cd "$srcdir/wazi"
+  export GOTOOLCHAIN=local CGO_ENABLED=0 GOAMD64=v1
+  go build -trimpath -buildvcs=false -ldflags='-s -w' -o bin/wazi .
+}
+check() {
+  cd "$srcdir/wazi"
+  local wazi_test_home
+  wazi_test_home=$(mktemp -d "$srcdir/wazi-tests.XXXXXX")
+  export XDG_CONFIG_HOME="$wazi_test_home/config" XDG_DATA_HOME="$wazi_test_home/data"
+  export XDG_CACHE_HOME="$wazi_test_home/cache" XDG_STATE_HOME="$wazi_test_home/state"
+  mkdir -p "$XDG_DATA_HOME/Trash/files" "$XDG_DATA_HOME/Trash/info"
+  GOTOOLCHAIN=local CGO_ENABLED=0 go test ./src/...
+  python tests/wazi_smoke.py "$srcdir/wazi/bin/wazi"
+}
+package() {
+  cd "$srcdir/wazi"
+  install -Dm755 bin/wazi "$pkgdir/usr/bin/wazi"
+  install -Dm644 assets/wazi.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/wazi.svg"
+  install -Dm644 assets/com.wiamox.wazi.desktop "$pkgdir/usr/share/applications/com.wiamox.wazi.desktop"
+  install -Dm644 README.md TUTORIAL.md -t "$pkgdir/usr/share/doc/wazi/"
+  install -Dm644 LICENSE NOTICE.md UPSTREAM.md -t "$pkgdir/usr/share/licenses/wazi/"
+}

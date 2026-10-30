@@ -9,6 +9,7 @@
 #   scripts/build.sh calamares-wiamox     the installer config (git submodule)
 #   scripts/build.sh woxed                the WiamOX Editor (git submodule)
 #   scripts/build.sh wed                  Wiam's Editor, GUI (git submodule)
+#   scripts/build.sh wazi                 WiamOX Terminal File Manager (sibling wazi source)
 #   scripts/build.sh woxfiles             WiamOX File Manager (sibling woxfiles source)
 #   scripts/build.sh wiamox-woxview       WiamOX Viewer (sibling woxview source)
 #   scripts/build.sh woxbrowser           WiamOX Browser (git submodule)
@@ -98,6 +99,7 @@ load_conf
 clean_build_env
 export WIAMOX_KERNEL_SRC=${WIAMOX_KERNEL_SRC-} WIAMOX_KERNEL_CONFIG=${WIAMOX_KERNEL_CONFIG:-fragments}
 export WIAMOX_COREUTILS_SRC=${WIAMOX_COREUTILS_SRC-}
+export WIAMOX_WAZI_SRC=${WIAMOX_WAZI_SRC:-$ROOT/../wazi}
 export WIAMOX_FILES_SRC=${WIAMOX_FILES_SRC:-$ROOT/../woxfiles}
 export WIAMOX_VIEWER_SRC=${WIAMOX_VIEWER_SRC:-$ROOT/../woxview}
 export BUILDDIR=${WIAMOX_BUILDDIR:-$ROOT/build}
