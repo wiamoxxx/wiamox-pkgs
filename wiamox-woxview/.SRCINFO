@@ -1,7 +1,7 @@
 pkgbase = wiamox-woxview
 	pkgdesc = WiamOX Viewer — offline image viewing, quick editing and printing by Wiam Khader
 	pkgver = 1.0.0
-	pkgrel = 2
+	pkgrel = 3
 	url = https://github.com/wiamoxxx/woxview
 	arch = x86_64
 	license = GPL-3.0-or-later

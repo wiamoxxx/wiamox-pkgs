@@ -1,7 +1,7 @@
 # Maintainer: Wiam Khader <Wiam@wiamox.com>
 pkgname=wiamox-woxview
 pkgver=1.0.0
-pkgrel=2
+pkgrel=3
 pkgdesc="WiamOX Viewer — offline image viewing, quick editing and printing by Wiam Khader"
 arch=('x86_64')
 url='https://github.com/wiamoxxx/woxview'
