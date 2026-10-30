@@ -9,6 +9,7 @@
 #   scripts/build.sh calamares-wiamox     the installer config (git submodule)
 #   scripts/build.sh woxed                the WiamOX Editor (git submodule)
 #   scripts/build.sh wed                  Wiam's Editor, GUI (git submodule)
+#   scripts/build.sh wiamox-woxview       WiamOX Viewer (sibling woxview source)
 #   scripts/build.sh woxbrowser           WiamOX Browser (git submodule)
 #   scripts/build.sh woxmon               WiamOX Monitor, terminal system monitor (folder woxmon/)
 #   scripts/build.sh ai-center            the WiamOX AI Center launcher (git submodule)
@@ -96,6 +97,7 @@ load_conf
 clean_build_env
 export WIAMOX_KERNEL_SRC=${WIAMOX_KERNEL_SRC-} WIAMOX_KERNEL_CONFIG=${WIAMOX_KERNEL_CONFIG:-fragments}
 export WIAMOX_COREUTILS_SRC=${WIAMOX_COREUTILS_SRC-}
+export WIAMOX_VIEWER_SRC=${WIAMOX_VIEWER_SRC:-$ROOT/../woxview}
 export BUILDDIR=${WIAMOX_BUILDDIR:-$ROOT/build}
 # Kept out of the package folders, so the submodules stay clean. SRCDEST
 # holds downloaded sources (woxed: Neovim, ~33 plugin repos) between builds.

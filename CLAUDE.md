@@ -221,3 +221,12 @@ something important. User-facing details are in README.md.
   onnxruntime TensorRT, nvshmem MPI/IB/UCX transports, cufile RDMA, numba TBB,
   Python `_crypt`/libcrypt.so.1); added with `repo-add -R` by hand after
   reviewing that list (= `--no-libcheck`). Re-check the list on version bumps.
+
+## WiamOX Viewer (30.10.2026)
+
+`wiamox-woxview/PKGBUILD` builds the sibling `../woxview` source checkout,
+one-time fork of nomacs 3.22.4, as `wiamox-woxview` 1.0.0. Override with
+WIAMOX_VIEWER_SRC. It includes local edits; source is copied, never changed.
+Runtime offline; Paint, Transform, Page Extraction and required image codecs
+are bundled/declared dependencies. Run through the Arch build container.
+Command: woxview. App ID: com.wiamox.woxview. Source memory: woxview/CLAUDE.md.

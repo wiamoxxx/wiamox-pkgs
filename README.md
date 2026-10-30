@@ -13,6 +13,7 @@ script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 | `wiamox-llama.cpp-cuda/` | `wiamox-llama.cpp-cuda` (provides `llama.cpp`): `llama-server` for AI Center, CUDA build | llama.cpp from GitHub, pinned by commit, built at build time |
 | `wiamox-comfyui-cuda/` | `wiamox-comfyui-cuda` (provides `comfyui`): ComfyUI for AI Center, own Python + PyTorch, works offline, CUDA build | ComfyUI release tag, PyPI and the PyTorch wheel index, custom nodes pinned by commit; all fetched at build time |
 | `woxed/` | `woxed`: the WiamOX Editor | git submodule → [wiamoxxx/woxed](https://github.com/wiamoxxx/woxed) |
+| `wiamox-woxview/` | `wiamox-woxview`: WiamOX Viewer | sibling [wiamoxxx/woxview](https://github.com/wiamoxxx/woxview) checkout; offline source build, bundled editing plugins |
 | `woxbrowser/` | `woxbrowser`: WiamOX Browser | git submodule → [wiamoxxx/woxbrowser](https://github.com/wiamoxxx/woxbrowser) |
 | `woxmon/` | `woxmon`: WiamOX Monitor (terminal system monitor) | its own code, in this repo (`woxmon/`) |
 | `wed/` | `wed`: Wiam's Editor (GUI) | git submodule → [wiamoxxx/wed](https://github.com/wiamoxxx/wed) |
@@ -529,3 +530,11 @@ with it: **the WiamOX repo must be listed before `[core]`** in every
 `linux` provides `VIRTUALBOX-GUEST-MODULES`, `WIREGUARD-MODULE` and
 `NTSYNC-MODULE` like Arch's kernel, so packages that depend on those
 (e.g. `virtualbox-guest-utils-nox`) don't pull Arch's kernel back in.
+
+## WiamOX Viewer
+
+Clone `git@github.com:wiamoxxx/woxview.git` beside this repository, then build
+`scripts/build.sh wiamox-woxview` inside the Arch build box. The recipe copies
+the sibling source (including local edits) and never changes that checkout.
+Set `WIAMOX_VIEWER_SRC` for another location. All app/plugin sources are local;
+codecs and build dependencies must be installed or available in the package cache.

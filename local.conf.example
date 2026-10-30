@@ -32,3 +32,6 @@ WIAMOX_KITCHEN_DB=custom
 #WIAMOX_PUBLISH_TAG=x86_64
 # Repo name in pacman.conf ([woxkitchen]).
 #WIAMOX_PUBLISH_DB=woxkitchen
+
+# WiamOX Viewer source checkout (defaults to the sibling ../woxview)
+#WIAMOX_VIEWER_SRC=/home/lol/Projects/woxview
