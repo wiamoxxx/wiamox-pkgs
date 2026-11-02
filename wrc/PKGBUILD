@@ -1,0 +1,8 @@
+# Reuse the application-owned recipe so dependencies and version cannot drift.
+_wrc_checkout=${WIAMOX_WRC_SRC:-$startdir/../../WRC}
+[[ -f $_wrc_checkout/packaging/PKGBUILD ]] || {
+  error "Missing WRC checkout: $_wrc_checkout (set WIAMOX_WRC_SRC in local.conf)"
+  return 1
+}
+export WIAMOX_WRC_SRC=$(realpath "$_wrc_checkout")
+source "$WIAMOX_WRC_SRC/packaging/PKGBUILD"

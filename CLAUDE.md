@@ -33,6 +33,7 @@ something important. User-facing details are in README.md.
 | `wiamox-llama.cpp-cuda` | `wiamox-llama.cpp-cuda/` | git source `ggml-org/llama.cpp`, pinned by tag `bNNNN` + commit | `provides/conflicts=(llama.cpp)`; one package per GPU variant (ROCm later = `wiamox-llama.cpp-rocm/`); `/usr/bin/llama-server` (+cli, bench, quantize, gguf-split, perplexity, mtmd-cli for vision), libs in `/usr/lib/wiamox-llama.cpp` via RPATH; `GGML_NATIVE=OFF`, no curl; `ai-center` depends on `llama.cpp`; has makedepends → `--syncdeps` (cuda, cmake) |
 | `wiamox-comfyui-cuda` | `wiamox-comfyui-cuda/` | ComfyUI git tag `v$pkgver` + PyPI + PyTorch wheel index + `nodes.txt` (git, pinned by commit); all fetched at build time | `provides/conflicts=(comfyui)`; self-contained: uv-managed Python 3.12 in `/usr/lib/wiamox-comfyui/python`, torch `cu130` wheels (CUDA inside, only `nvidia-utils` from the system), `/usr/bin/wiamox-comfyui` wrapper (offline env), nodes copied to the user's folder by AI Center; `!strip`; `check()` = CPU smoke test; makedepends `uv git` → `--syncdeps`; ROCm later = `_backend=rocm7.2` copy; `ai-center` optdepends it |
 | `wiamox-nvidia` (+ `-new`, `-legacy`) | `wiamox-nvidia/` | local sources | `setup` (installer step `shellprocess@wiamox-nvidia` + `wox gpu install`): card → 615 open (`new.packages`, Turing+ ≥0x1E00) / 580xx legacy (`legacy.packages`, chaotic-aur, 0x1340–0x1DFF) / nouveau (Kepler-) / none; DKMS both (Arch's prebuilt modules don't fit the WiamOX kernel). `-new`/`-legacy` = marker files only (the branches conflict, so the bundle can't list drivers). Lists are read by woxclean1 `build-wiamox-repo.sh`. Ships the niri VRAM app profile. `check()` = `test_setup.py`. Needs `wiamox-wox>=0.3.0` (`wox gpu --recommend`). |
+| `wrc` | `wrc/` | sibling WRC checkout (`WIAMOX_WRC_SRC`) | thin wrapper sources canonical WRC/packaging/PKGBUILD; committed HEAD; version from internal/buildinfo/VERSION; build-time Go modules + pinned Limine, offline runtime; `--syncdeps` |
 | `woxmon` | `woxmon/` | own code in this repo (WiamOX Monitor, terminal system monitor, C++/CMake, Apache-2.0) | memory: `woxmon/CLAUDE.md`; PKGBUILD packages the committed folder (`git archive`); own code from here on (fresh copy, no upstream; the base's name must appear nowhere, `check()` scans for it); no internet needed; ~1 min; makedepends `cmake gtest lowdown librsvg` → `--syncdeps`; optdepends `nvidia-utils`, `rocm-smi-lib` |
 | `calamares` | `aur/calamares/` (gitignored) | the AUR, cloned/updated by build.sh | links libpython → rebuild after every Python update (`--force`) |
 | `coreutils` | `coreutils/` | coreutils tree on disk (`WIAMOX_COREUTILS_SRC`) | release tarball or git clone + gnulib; Arch's configure flags |
@@ -255,3 +256,9 @@ launcher. checkdepends ExifTool/zoxide support upstream integration checks.
 check() runs the Go suite and isolated real-terminal smoke checks.
 Build: `wiamox-build wazi`. The ISO replaces Yazi with wazi; woxfiles stays
 the graphical default. Source memory and navigation docs live in ../wazi.
+
+- 02.11.2026: WRC 0.4.0 shipping integration: `scripts/build.sh wrc` uses
+  sibling `../WRC` (override `WIAMOX_WRC_SRC`) and the application's canonical
+  recipe. Includes desktop launcher and offline doctor; woxclean1 requires it
+  and gates customization on doctor. Staging/Go checks run in cloud; actual
+  Arch makepkg and WiamOX ISO/desktop tests are left to the owner's build machine.

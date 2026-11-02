@@ -13,6 +13,7 @@
 #   scripts/build.sh woxfiles             WiamOX File Manager (sibling woxfiles source)
 #   scripts/build.sh wiamox-woxview       WiamOX Viewer (sibling woxview source)
 #   scripts/build.sh woxbrowser           WiamOX Browser (git submodule)
+#   scripts/build.sh wrc                  Offline rescue TUI (sibling ../WRC checkout)
 #   scripts/build.sh woxmon               WiamOX Monitor, terminal system monitor (folder woxmon/)
 #   scripts/build.sh ai-center            the WiamOX AI Center launcher (git submodule)
 #   scripts/build.sh wiamox-opencode      OpenCode (offline build of the upstream binary)
@@ -102,6 +103,7 @@ export WIAMOX_COREUTILS_SRC=${WIAMOX_COREUTILS_SRC-}
 export WIAMOX_WAZI_SRC=${WIAMOX_WAZI_SRC:-$ROOT/../wazi}
 export WIAMOX_FILES_SRC=${WIAMOX_FILES_SRC:-$ROOT/../woxfiles}
 export WIAMOX_VIEWER_SRC=${WIAMOX_VIEWER_SRC:-$ROOT/../woxview}
+export WIAMOX_WRC_SRC=${WIAMOX_WRC_SRC:-$ROOT/../WRC}
 export BUILDDIR=${WIAMOX_BUILDDIR:-$ROOT/build}
 # Kept out of the package folders, so the submodules stay clean. SRCDEST
 # holds downloaded sources (woxed: Neovim, ~33 plugin repos) between builds.

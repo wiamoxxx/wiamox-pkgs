@@ -15,6 +15,7 @@ script that publishes woxKitchen online as the pacman repo `[woxkitchen]`.
 | `woxed/` | `woxed`: the WiamOX Editor | git submodule → [wiamoxxx/woxed](https://github.com/wiamoxxx/woxed) |
 | `wiamox-woxview/` | `wiamox-woxview`: WiamOX Viewer | sibling [wiamoxxx/woxview](https://github.com/wiamoxxx/woxview) checkout; offline source build, bundled editing plugins |
 | `woxbrowser/` | `woxbrowser`: WiamOX Browser | git submodule → [wiamoxxx/woxbrowser](https://github.com/wiamoxxx/woxbrowser) |
+| `wrc/` | `wrc`: Wiam’s Rescue Center (offline Linux recovery TUI) | sibling [wiamoxxx/WRC](https://github.com/wiamoxxx/WRC) checkout; canonical recipe in that repository |
 | `woxmon/` | `woxmon`: WiamOX Monitor (terminal system monitor) | its own code, in this repo (`woxmon/`) |
 | `wed/` | `wed`: Wiam's Editor (GUI) | git submodule → [wiamoxxx/wed](https://github.com/wiamoxxx/wed) |
 | `aur/calamares/` | `calamares`: the installer program | the AUR, cloned on first build (not part of this repo) |
@@ -563,3 +564,26 @@ launcher. checkdepends ExifTool/zoxide support upstream integration checks.
 check() runs the Go suite and isolated real-terminal smoke checks.
 Build: `wiamox-build wazi`. The ISO replaces Yazi with wazi; woxfiles stays
 the graphical default. Source memory and navigation docs live in ../wazi.
+
+## Building WRC (Rescue Center)
+
+Clone/update `wiamoxxx/WRC` beside this repository, or set `WIAMOX_WRC_SRC`
+in `local.conf` to its checkout. Commit application changes before packaging:
+the recipe archives committed HEAD and checks its embedded version.
+
+```sh
+scripts/build.sh wrc
+```
+
+The canonical `WRC/packaging/PKGBUILD` supplies the version, dependencies and
+build/check/install functions. Build-time internet fetches Go modules and a
+commit/checksum-pinned Limine EFI binary. The finished app needs no internet.
+The package includes the launcher/icon, offline help, version/source revision,
+and third-party notices. `check()` runs Go tests and vet. The build needs Go
+1.25 or later; the package has no runtime Go dependency.
+
+Build this package into woxKitchen **before** building the next ISO. The ISO
+profile now requests `wrc` and aborts customization if its required toolkit,
+payload or desktop integration fails `wrc --doctor --doctor-desktop`.
+See WRC's `docs/ISO_RELEASE.md` for the release and offline VM checklist.
+Arch packaging and the actual WiamOX desktop/ISO remain build-machine checks.

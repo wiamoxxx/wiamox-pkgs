@@ -35,3 +35,7 @@ WIAMOX_KITCHEN_DB=custom
 
 # WiamOX Viewer source checkout (defaults to the sibling ../woxview)
 #WIAMOX_VIEWER_SRC=/home/lol/Projects/woxview
+
+# Rescue Center source checkout (defaults to the sibling ../WRC).
+# Packages committed HEAD; online build fetches Go modules and pinned Limine.
+#WIAMOX_WRC_SRC=/home/lol/Projects/WRC
