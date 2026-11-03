@@ -267,3 +267,9 @@ the graphical default. Source memory and navigation docs live in ../wazi.
   sibling woxfiles first; it installs woxfiles-rescue-sync (restricted one-way
   rescue dialog). WRC's canonical recipe declares this dependency. The ISO
   seeds an exact installed WiamOX/Arch kernel bundle and gates on its integrity.
+
+- 03.11.2026: corrected the actual woxbrowser gitlink from c7574f89 (0.1.0)
+  to 29cd09a4 (published 0.2.1). Earlier memory entries described newer versions
+  but did not match the committed gitlink. No new browser source release/build.
+  docs/WOXBROWSER_REVIEW.md records a source-based capability review, proposed
+  priorities and owner build/ISO validation still required.

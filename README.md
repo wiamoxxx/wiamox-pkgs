@@ -250,6 +250,11 @@ wed: bump `version` in wed's `Cargo.toml`, push, then
 
 ## Building woxbrowser
 
+The submodule now pins **0.2.1**, including video downloading and the expanded
+start page/tutorial. See the [browser feature review](docs/WOXBROWSER_REVIEW.md)
+for the existing capabilities, proposed improvements and release checks.
+Updating the pointer does not rebuild the package already in woxKitchen.
+
 ```sh
 scripts/build.sh woxbrowser
 ```
