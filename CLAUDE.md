@@ -262,3 +262,8 @@ the graphical default. Source memory and navigation docs live in ../wazi.
   recipe. Includes desktop launcher and offline doctor; woxclean1 requires it
   and gates customization on doctor. Staging/Go checks run in cloud; actual
   Arch makepkg and WiamOX ISO/desktop tests are left to the owner's build machine.
+
+- 03.11.2026: WRC first-ISO data rescue needs Woxfiles >=1.2.0. Build updated
+  sibling woxfiles first; it installs woxfiles-rescue-sync (restricted one-way
+  rescue dialog). WRC's canonical recipe declares this dependency. The ISO
+  seeds an exact installed WiamOX/Arch kernel bundle and gates on its integrity.
