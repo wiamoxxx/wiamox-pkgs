@@ -1,5 +1,17 @@
 # Woxbrowser: feature review and next releases
 
+## 0.3.0 implementation update — 3 November 2026
+
+The owner selected ordinary file-download management, managed video downloads,
+quality/audio selection and interactive keyboard practice. These are now implemented
+and published in browser commit `16cb0bc1`; the workshop submodule pins that release.
+See [usage, tests and qualification limits](https://github.com/wiamoxxx/woxbrowser/blob/main/docs/downloads-and-practice.md).
+Focused Lua/subprocess/DOM tests passed, as did real yt-dlp/ffmpeg against generated
+local media. The actual Arch/native WebKit/desktop/ISO checks remain required.
+The proposed features below are the historical 0.2.1 review; selected delivered
+items should no longer be read as absent. Other proposals remain future choices.
+
+
 Reviewed 3 November 2026 against browser 0.2.1, commit
 `29cd09a45af0d96ae2df07765bb6dd6bb3bd0af4`. This is a source review and proposed
 roadmap, not an assertion that the proposed features have been implemented.

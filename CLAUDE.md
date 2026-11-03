@@ -273,3 +273,13 @@ the graphical default. Source memory and navigation docs live in ../wazi.
   but did not match the committed gitlink. No new browser source release/build.
   docs/WOXBROWSER_REVIEW.md records a source-based capability review, proposed
   priorities and owner build/ISO validation still required.
+
+- 03.11.2026: owner approved publication of woxbrowser **0.3.0**, commit
+  16cb0bc1; workshop gitlink updated from 29cd09a4 (0.2.1). Includes ordinary
+  download controls/history fixes, managed video queue/progress/cancel/retry,
+  quality/original-audio/MP3/M4A choices and offline keyboard exercises linked
+  from start/text tutorial. New Python standard-library worker is installed by
+  its Makefile; Python runtime dependency, ffmpeg/libnotify optional (all are on
+  the ISO already). Focused tests + actual local yt-dlp/ffmpeg passed; full Arch
+  package/native browser/ISO checks stay on the owner's build machine. This
+  source update does not rebuild the package already in woxKitchen.
